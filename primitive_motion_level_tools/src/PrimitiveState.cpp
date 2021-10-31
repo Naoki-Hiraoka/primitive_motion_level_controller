@@ -4,6 +4,8 @@
 #include <iostream>
 
 namespace primitive_motion_level_tools {
+  PrimitiveState::PrimitiveState() : PrimitiveState::PrimitiveState("") {
+  }
 
   PrimitiveState::PrimitiveState(const std::string& name) :
     name_(name),
@@ -39,6 +41,7 @@ namespace primitive_motion_level_tools {
   }
 
   void PrimitiveState::updateFromIdl(const primitive_motion_level_msgs::PrimitiveStateIdl& idl) {
+    this->name_ = idl.name;
     this->parentLinkName_ = idl.parentLinkName;
     this->localPose_.translation()[0] = idl.localPose.position.x;
     this->localPose_.translation()[1] = idl.localPose.position.y;
@@ -119,6 +122,28 @@ namespace primitive_motion_level_tools {
     this->targetOrientationInterpolator_.get(R, dt);
     this->targetPose_.linear() = R;
     this->targetWrenchInterpolator_.get(this->targetWrench_, dt);
+  }
+
+  void PrimitiveStates::updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeq& idl){
+    this->time_ = idl.tm.sec + idl.tm.nsec * 0.000000001;
+    this->primitiveState_.resize(idl.data.length());
+    for(int i=0;i<idl.data.length();i++){
+      this->primitiveState_[i]->updateFromIdl(idl.data[i]);
+    }
+  }
+
+  void PrimitiveStatesSequence::updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeqSeq& idl){
+    this->primitiveStates_.resize(idl.data.length());
+    for(int i=0;i<idl.data.length();i++){
+      this->primitiveStates_[i]->updateFromIdl(idl.data[i]);
+    }
+  }
+
+  void PrimitiveStatesSequence::updateTargetForOneStep(double dt){
+    if(this->primitiveStates_.size()>0) {
+      this->primitiveStates_[0]->time() -= dt;
+      if(this->primitiveStates_[0]->time()<0.0) this->primitiveStates_[0]->time() = 0.0;
+    }
   }
 
 };

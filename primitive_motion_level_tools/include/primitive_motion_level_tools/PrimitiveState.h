@@ -4,10 +4,12 @@
 #include <cnoid/Body>
 #include <primitive_motion_level_msgs/idl/PrimitiveState.hh>
 #include <cpp_filters/TwoPointInterpolator.h>
+#include <memory>
 
 namespace primitive_motion_level_tools {
   class PrimitiveState {
   public:
+    PrimitiveState();
     PrimitiveState(const std::string& name);
     void updateFromIdl(const primitive_motion_level_msgs::PrimitiveStateIdl& idl);
     void updateTargetForOneStep(double dt);
@@ -71,6 +73,31 @@ namespace primitive_motion_level_tools {
 
     bool isInitial_;
   };
+
+  class PrimitiveStates {
+  public:
+    void updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeq& idl);
+
+    const std::vector<std::shared_ptr<PrimitiveState> >& primitiveState() const { return primitiveState_;}
+    double& time() { return time_;}
+    const double& time() const { return time_;}
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  protected:
+    std::vector<std::shared_ptr<PrimitiveState> > primitiveState_;
+    double time_=0;
+  };
+
+  class PrimitiveStatesSequence {
+  public:
+    void updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeqSeq& idl);
+    void updateTargetForOneStep(double dt);
+
+    const std::vector<std::shared_ptr<PrimitiveStates> >& primitiveStates() const { return primitiveStates_;}
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  protected:
+    std::vector<std::shared_ptr<PrimitiveStates> > primitiveStates_;
+  };
+
 }
 
 #endif

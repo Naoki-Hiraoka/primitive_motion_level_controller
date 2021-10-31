@@ -9,11 +9,14 @@ namespace primitive_motion_level_tools {
     name_(name),
     parentLinkName_(""),
     localPose_(cnoid::Position::Identity()),
+    time_(0.0),
+    targetPoseRaw_(cnoid::Position::Identity()),
     targetPose_(cnoid::Position::Identity()),
     targetPosePrev_(cnoid::Position::Identity()),
     targetPosePrevPrev_(cnoid::Position::Identity()),
     targetPositionInterpolator_(cnoid::Vector3::Zero(),cnoid::Vector3::Zero(),cnoid::Vector3::Zero(),cpp_filters::HOFFARBIB),
     targetOrientationInterpolator_(cnoid::Matrix3::Identity(),cnoid::Vector3::Zero(),cnoid::Vector3::Zero(),cpp_filters::HOFFARBIB),
+    targetWrenchRaw_(cnoid::Vector6::Zero()),
     targetWrench_(cnoid::Vector6::Zero()),
     targetWrenchInterpolator_(cnoid::Vector6::Zero(),cnoid::Vector6::Zero(),cnoid::Vector6::Zero(),cpp_filters::HOFFARBIB),
     poseFollowGain_(cnoid::Vector6::Zero()),
@@ -41,11 +44,13 @@ namespace primitive_motion_level_tools {
     this->localPose_.translation()[1] = idl.localPose.position.y;
     this->localPose_.translation()[2] = idl.localPose.position.z;
     this->localPose_.linear() = cnoid::rotFromRpy(idl.localPose.orientation.r,idl.localPose.orientation.p,idl.localPose.orientation.y);
+    this->time_ = idl.time;
     cnoid::Position pose;
     pose.translation()[0] = idl.pose.position.x;
     pose.translation()[1] = idl.pose.position.y;
     pose.translation()[2] = idl.pose.position.z;
     pose.linear() = cnoid::rotFromRpy(idl.pose.orientation.r,idl.pose.orientation.p,idl.pose.orientation.y);
+    this->targetPoseRaw_ = pose;
     if(!this->isInitial_ && idl.time > 0.0){
       this->targetPositionInterpolator_.setGoal(pose.translation(),idl.time);
       this->targetOrientationInterpolator_.setGoal(pose.linear(),idl.time);
@@ -54,6 +59,7 @@ namespace primitive_motion_level_tools {
       this->targetOrientationInterpolator_.reset(pose.linear());
     }
     cnoid::Vector6 wrench; for(size_t i=0;i<6;i++) wrench[i] = idl.wrench[i];
+    this->targetWrenchRaw_ = wrench;
     if(!this->isInitial_ && idl.time > 0.0){
       this->targetWrenchInterpolator_.setGoal(wrench,idl.time);
     }else{

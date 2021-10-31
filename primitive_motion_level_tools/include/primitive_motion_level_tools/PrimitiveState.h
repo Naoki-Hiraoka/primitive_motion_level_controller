@@ -14,8 +14,11 @@ namespace primitive_motion_level_tools {
     const std::string& name() const { return name_;}
     const std::string& parentLinkName() const { return parentLinkName_;}
     const cnoid::Position& localPose() const { return localPose_;}
+    const double& time() const { return time_;}
     const cnoid::Position& targetPose() const { return targetPose_;}
+    const cnoid::Position& targetPoseRaw() const { return targetPoseRaw_;}
     const cnoid::Vector6& targetWrench() const { return targetWrench_;}
+    const cnoid::Vector6& targetWrenchRaw() const { return targetWrenchRaw_;}
     const cnoid::Vector6& poseFollowGain() const { return poseFollowGain_;}
     const cnoid::Vector6& wrenchFollowGain() const { return wrenchFollowGain_;}
     const bool& isPoseCGlobal() const { return isPoseCGlobal_; }
@@ -36,12 +39,15 @@ namespace primitive_motion_level_tools {
     std::string name_;
     std::string parentLinkName_;
     cnoid::Position localPose_;
+    double time_;
 
+    cnoid::Position targetPoseRaw_; //world frame
     cnoid::Position targetPose_; //world frame
     cnoid::Position targetPosePrev_; //world frame
     cnoid::Position targetPosePrevPrev_; //world frame
     cpp_filters::TwoPointInterpolator<cnoid::Vector3> targetPositionInterpolator_; //world frame
     cpp_filters::TwoPointInterpolatorSO3 targetOrientationInterpolator_; //world frame
+    cnoid::Vector6 targetWrenchRaw_; //world frame
     cnoid::Vector6 targetWrench_; //world frame
     cpp_filters::TwoPointInterpolator<cnoid::Vector6> targetWrenchInterpolator_; //world frame
 

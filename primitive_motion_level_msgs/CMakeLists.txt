@@ -21,6 +21,7 @@ add_message_files(
   FILES
   PrimitiveState.msg
   PrimitiveStateArray.msg
+  PrimitiveStateArrayArray.msg
   )
 
 # initialize rtmbuild (generate_messages is called)

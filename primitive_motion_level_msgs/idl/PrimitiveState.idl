@@ -43,4 +43,10 @@ module primitive_motion_level_msgs
     RTC::Time tm;
     sequence<PrimitiveStateIdl> data;
   };
+
+  struct TimedPrimitiveStateSeqSeq
+  {
+    RTC::Time tm;
+    sequence<TimedPrimitiveStateSeq> data; // 各要素のtmは一つ前の要素からの経過時間を表す
+  };
 };

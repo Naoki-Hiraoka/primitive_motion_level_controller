@@ -430,7 +430,7 @@ namespace WholeBodyPosition {
                                                          taskOSQP->solver().settings()->setVerbosity(debugLevel);
                                                          taskOSQP->solver().settings()->setMaxIteration(500);
                                                          taskOSQP->solver().settings()->setCheckTermination(10);//すぐに収束するなら、小さいほうが速い
-                                                         taskOSQP->solver().settings()->setLinearSystemSolver(0);//MKTを使ってもそんなに速くならなかった
+                                                         taskOSQP->solver().settings()->setLinearSystemSolver(0);//1:MKT. https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.htmlからのインストールと、source /opt/intel/oneapi/mkl/latest/env/vars.sh必要. intel / amdのPCでそれぞれ試したが、MKTを使ってもそんなに速くならなかった.
                                                          taskOSQP->solver().settings()->setAbsoluteTolerance(1e-2);// 大きい方が速いが，不正確
                                                          taskOSQP->solver().settings()->setRelativeTolerance(1e-2);// 大きい方が速いが，不正確
                                                          taskOSQP->solver().settings()->setPrimalInfeasibilityTollerance(1e-2);// 大きい方が速いが，不正確

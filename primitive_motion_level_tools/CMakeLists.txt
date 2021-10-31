@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rtmbuild
   roscpp
   cpp_filters
+  primitive_motion_level_msgs
   )
 find_package(choreonoid REQUIRED)
 
@@ -21,7 +22,7 @@ rtmbuild_init()
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS cpp_filters
+  CATKIN_DEPENDS cpp_filters primitive_motion_level_msgs
 #  DEPENDS system_lib
 )
 

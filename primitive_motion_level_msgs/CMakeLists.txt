@@ -31,7 +31,7 @@ catkin_package(
 #  INCLUDE_DIRS include
   LIBRARIES PrimitiveStateSkel PrimitiveStateStub
 #  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+  DEPENDS openrtm_aist
 )
 
 # generate idl

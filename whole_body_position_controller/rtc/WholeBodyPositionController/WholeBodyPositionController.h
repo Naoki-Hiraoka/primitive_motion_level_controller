@@ -147,7 +147,7 @@ protected:
   std::unordered_map<cnoid::LinkPtr, std::vector<std::shared_ptr<joint_limit_table::JointLimitTable> > > jointLimitTablesMap_;
 
   // 1. portから受け取ったprimitive motion level 指令など
-  std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> > primitiveCommandMap_;
+  primitive_motion_level_tools::PrimitiveStates primitiveStates_;
   std::vector<std::shared_ptr<WholeBodyPosition::Collision> > collisions_;
 
   // 2. primitiveCommandMap_を受け取り、m_robot_comを計算する
@@ -156,12 +156,12 @@ protected:
   // static functions
   static void readPorts(const std::string& instance_name, WholeBodyPositionController::Ports& port);
   static void calcReferenceRobot(const std::string& instance_name, const WholeBodyPositionController::Ports& port, cnoid::BodyPtr& robot);
-  static void getPrimitiveCommand(const std::string& instance_name, const WholeBodyPositionController::Ports& port, double dt, std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >& primitiveCommandMap);
+  static void getPrimitiveCommand(const std::string& instance_name, const WholeBodyPositionController::Ports& port, double dt, primitive_motion_level_tools::PrimitiveStates& primitiveStates);
   static void getCollision(const std::string& instance_name, const WholeBodyPositionController::Ports& port, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions);
   static void processModeTransition(const std::string& instance_name, WholeBodyPositionController::ControlMode& mode, const double dt, const cnoid::BodyPtr& robot_ref, const cnoid::BodyPtr& robot_com, WholeBodyPositionController::OutputOffsetInterpolators& outputOffsetInterpolators);
   static void preProcessForControl(const std::string& instance_name, WholeBodyPosition::PositionController& positionController);
   static void passThrough(const std::string& instance_name, const cnoid::BodyPtr& robot_ref, cnoid::BodyPtr& robot_com, WholeBodyPositionController::OutputOffsetInterpolators& outputOffsetInterpolators, double dt, const std::vector<cnoid::LinkPtr>& useJoints = std::vector<cnoid::LinkPtr>());
-  static void calcOutputPorts(const std::string& instance_name, WholeBodyPositionController::Ports& port, const cnoid::BodyPtr& robot_com, std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >& primitiveCommandMap);
+  static void calcOutputPorts(const std::string& instance_name, WholeBodyPositionController::Ports& port, const cnoid::BodyPtr& robot_com, const primitive_motion_level_tools::PrimitiveStates& primitiveStates);
 };
 
 

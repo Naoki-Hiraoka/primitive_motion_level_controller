@@ -126,15 +126,40 @@ namespace primitive_motion_level_tools {
 
   void PrimitiveStates::updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeq& idl){
     this->time_ = idl.tm.sec + idl.tm.nsec * 0.000000001;
-    this->primitiveState_.resize(idl.data.length());
-    for(int i=0;i<idl.data.length();i++){
-      this->primitiveState_[i]->updateFromIdl(idl.data[i]);
+
+    // 消滅したEndEffectorを削除
+    for(std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >::iterator it = this->primitiveState_.begin(); it != this->primitiveState_.end(); ) {
+      bool found = false;
+      for(size_t i=0;i<idl.data.length();i++) {
+        if(std::string(idl.data[i].name)==it->first) found = true;
+      }
+      if (!found) it = this->primitiveState_.erase(it);
+      else ++it;
+    }
+    // 増加したEndEffectorの反映
+    for(size_t i=0;i<idl.data.length();i++){
+      if(this->primitiveState_.find(std::string(idl.data[i].name))==this->primitiveState_.end()){
+        this->primitiveState_[std::string(idl.data[i].name)] = std::make_shared<primitive_motion_level_tools::PrimitiveState>(std::string(idl.data[i].name));
+      }
+    }
+    // 各指令値の反映
+    for(size_t i=0;i<idl.data.length();i++){
+      const primitive_motion_level_msgs::PrimitiveStateIdl& idlstate = idl.data[i];
+      std::shared_ptr<primitive_motion_level_tools::PrimitiveState> state = this->primitiveState_[std::string(idlstate.name)];
+      state->updateFromIdl(idlstate);
+    }
+  }
+
+  void PrimitiveStates::updateTargetForOneStep(double dt) {
+    for(std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >::iterator it = this->primitiveState_.begin(); it != this->primitiveState_.end(); it++) {
+      it->second->updateTargetForOneStep(dt);
     }
   }
 
   void PrimitiveStatesSequence::updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeqSeq& idl){
     this->primitiveStates_.resize(idl.data.length());
     for(int i=0;i<idl.data.length();i++){
+      if(!this->primitiveStates_[i]) this->primitiveStates_[i] = std::make_shared<PrimitiveStates>();
       this->primitiveStates_[i]->updateFromIdl(idl.data[i]);
     }
   }

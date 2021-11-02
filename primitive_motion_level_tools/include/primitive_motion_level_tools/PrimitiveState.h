@@ -5,6 +5,7 @@
 #include <primitive_motion_level_msgs/idl/PrimitiveState.hh>
 #include <cpp_filters/TwoPointInterpolator.h>
 #include <memory>
+#include <map>
 
 namespace primitive_motion_level_tools {
   class PrimitiveState {
@@ -77,13 +78,14 @@ namespace primitive_motion_level_tools {
   class PrimitiveStates {
   public:
     void updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeq& idl);
+    void updateTargetForOneStep(double dt);
 
-    const std::vector<std::shared_ptr<PrimitiveState> >& primitiveState() const { return primitiveState_;}
+    const std::map<std::string, std::shared_ptr<PrimitiveState> >& primitiveState() const { return primitiveState_;}
     double& time() { return time_;}
     const double& time() const { return time_;}
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   protected:
-    std::vector<std::shared_ptr<PrimitiveState> > primitiveState_;
+    std::map<std::string, std::shared_ptr<PrimitiveState> > primitiveState_;
     double time_=0;
   };
 

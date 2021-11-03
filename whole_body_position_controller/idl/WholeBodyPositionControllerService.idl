@@ -21,6 +21,7 @@ module whole_body_position_controller
       // PositionController setting
       SolveModeEnum solveMode;
       boolean followRootLink;
+      double comVelocityLimit;
     };
     void setParams(in WholeBodyPositionControllerParam i_param);
     void getParams(out WholeBodyPositionControllerParam i_param);

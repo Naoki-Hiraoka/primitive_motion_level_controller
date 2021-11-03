@@ -253,12 +253,14 @@ namespace WholeBodyPosition {
     }
   }
 
-  void PositionController::getCOMVelocityIKConstraints(std::shared_ptr<IK::COMVelocityConstraint> cOMVelocityConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double weight) {
+  void PositionController::getCOMVelocityIKConstraints(std::shared_ptr<IK::COMVelocityConstraint> cOMVelocityConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double comVelocityLimit, double weight) {
+    if(comVelocityLimit<=0.0) return;
+
     if(!cOMVelocityConstraint) cOMVelocityConstraint = std::make_shared<IK::COMVelocityConstraint>();
 
     cOMVelocityConstraint->robot() = robot_com;
-    cOMVelocityConstraint->maxVel() = cnoid::Vector3::Ones() * 0.05;
-    cOMVelocityConstraint->minVel() = - cnoid::Vector3::Ones() * 0.05;
+    cOMVelocityConstraint->maxVel() = cnoid::Vector3::Ones() * comVelocityLimit;
+    cOMVelocityConstraint->minVel() = - cnoid::Vector3::Ones() * comVelocityLimit;
     cOMVelocityConstraint->maxError() << 10.0*dt, 10.0*dt, 10.0*dt;
     cOMVelocityConstraint->precision() << 1e-4, 1e-4, 1e-4;
     cOMVelocityConstraint->weight() = cnoid::Vector3::Ones()*weight;
@@ -311,7 +313,7 @@ namespace WholeBodyPosition {
       break;
     case MODE_PRIORITIZED:
     default:
-      this->prioritizedIKSolver_.solvePrioritizedIK(robot_com, robot_ref, this->positionTaskMap_, jointLimitTablesMap, collisions, useJoints, dt, this->followRootLink_, debugLevel);
+      this->prioritizedIKSolver_.solvePrioritizedIK(robot_com, robot_ref, this->positionTaskMap_, jointLimitTablesMap, collisions, useJoints, dt, this->followRootLink_, this->comVelocityLimit_, debugLevel);
       break;
     }
 
@@ -374,6 +376,7 @@ namespace WholeBodyPosition {
                                                                    const std::vector<cnoid::LinkPtr>& useJoints,
                                                                    double dt,
                                                                    bool followRootLink,
+                                                                   double comVelocityLimit,
                                                                    int debugLevel){
 
     // 関節角速度上下限を取得
@@ -385,7 +388,7 @@ namespace WholeBodyPosition {
     PositionController::getJointLimitIKConstraints(this->jointLimitConstraint_, limitConstraint, robot_com, jointLimitTablesMap, dt);
 
     // 重心速度上下限を取得
-    PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, limitConstraint, robot_com, dt);
+    PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, limitConstraint, robot_com, dt, comVelocityLimit);
 
     // 関節角度上下限を取得
     PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, collisions, dt, 10.0); //weightはweを増やしている

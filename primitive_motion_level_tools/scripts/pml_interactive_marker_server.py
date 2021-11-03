@@ -16,7 +16,6 @@
 #       wrench_follow_gain: [<double>, <double>, <double>, <double>, <double>, <double>] # default 0.0
 #       support_com: <bool> #default false
 #       time: <double> # default 0.1
-#       wrench_gain: [x ,y, z, rx, ry, rz] # default 0
 #       M: [x ,y, z, rx, ry, rz] # default 10, 10, 10, 5, 5, 5
 #       D: [x ,y, z, rx, ry, rz] # default 200, 200, 200, 100, 100, 100
 #       K: [x ,y, z, rx, ry, rz] # default 400, 400, 400, 200, 200, 200

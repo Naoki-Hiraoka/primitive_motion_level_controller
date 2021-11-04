@@ -283,7 +283,7 @@ namespace WholeBodyPosition {
       collisionConstraints[i]->direction() = collisions[i]->direction21();
 
       // 全自己干渉情報を与えると計算コストが膨大になるため、距離が近いもののみ与える
-      if(collisions[i]->distance() < 0.01 + 0.05){
+      if(collisions[i]->distance() < 0.01 + margin * 4){
         collisionIKConstraints.push_back(collisionConstraints[i]);
       }
     }

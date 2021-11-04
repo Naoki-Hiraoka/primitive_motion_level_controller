@@ -261,7 +261,7 @@ namespace WholeBodyPosition {
     cOMVelocityConstraint->robot() = robot_com;
     cOMVelocityConstraint->maxVel() = cnoid::Vector3::Ones() * comVelocityLimit;
     cOMVelocityConstraint->minVel() = - cnoid::Vector3::Ones() * comVelocityLimit;
-    cOMVelocityConstraint->maxError() << 10.0*dt, 10.0*dt, 10.0*dt;
+    cOMVelocityConstraint->maxError() << 1.0*dt, 1.0*dt, 1.0*dt;
     cOMVelocityConstraint->precision() << 1e-4, 1e-4, 1e-4;
     cOMVelocityConstraint->weight() = cnoid::Vector3::Ones()*weight;
     cOMVelocityConstraint->dt() = dt;
@@ -269,14 +269,14 @@ namespace WholeBodyPosition {
     iKConstraints.push_back(cOMVelocityConstraint);
   }
 
-  void PositionController::getCollisionIKConstraints(std::vector<std::shared_ptr<IK::ClientCollisionConstraint> >& collisionConstraints, std::vector<std::shared_ptr<IK::IKConstraint> >& collisionIKConstraints, const cnoid::BodyPtr& robot_com, const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, double dt, double weight){
+  void PositionController::getCollisionIKConstraints(std::vector<std::shared_ptr<IK::ClientCollisionConstraint> >& collisionConstraints, std::vector<std::shared_ptr<IK::IKConstraint> >& collisionIKConstraints, const cnoid::BodyPtr& robot_com, const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, double dt, double margin, double weight){
     collisionConstraints.resize(collisions.size());
     for(size_t i=0;i<collisionConstraints.size();i++){
       if(!collisionConstraints[i]) collisionConstraints[i] = std::make_shared<IK::ClientCollisionConstraint>();
       collisionConstraints[i]->A_link() = robot_com->link(collisions[i]->link1());
       collisionConstraints[i]->B_link() = robot_com->link(collisions[i]->link2());
-      collisionConstraints[i]->tolerance() = 0.01; // 1cm
-      collisionConstraints[i]->maxError() = 1.0*dt;
+      collisionConstraints[i]->tolerance() = margin;
+      collisionConstraints[i]->maxError() = 10.0*dt;
       collisionConstraints[i]->weight() = weight;
       collisionConstraints[i]->A_localp() = collisions[i]->point1();
       collisionConstraints[i]->B_localp() = collisions[i]->point2();
@@ -290,7 +290,8 @@ namespace WholeBodyPosition {
   }
 
   void PositionController::control(const std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >& primitiveCommandMap, // primitive motion level target
-                                   const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, // current self collision state
+                                   const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& selfCollisions, // current self collision state
+                                   const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& envCollisions, // current self collision state
                                    const cnoid::BodyPtr& robot_ref, // command level target
                                    const std::vector<cnoid::LinkPtr>& useJoints,
                                    std::unordered_map<cnoid::LinkPtr, std::vector<std::shared_ptr<joint_limit_table::JointLimitTable> > >& jointLimitTablesMap,
@@ -313,7 +314,7 @@ namespace WholeBodyPosition {
       break;
     case MODE_PRIORITIZED:
     default:
-      this->prioritizedIKSolver_.solvePrioritizedIK(robot_com, robot_ref, this->positionTaskMap_, jointLimitTablesMap, collisions, useJoints, dt, this->followRootLink_, this->comVelocityLimit_, debugLevel);
+      this->prioritizedIKSolver_.solvePrioritizedIK(robot_com, robot_ref, this->positionTaskMap_, jointLimitTablesMap, selfCollisions, envCollisions, useJoints, dt, this->followRootLink_, this->comVelocityLimit_, debugLevel);
       break;
     }
 
@@ -372,7 +373,8 @@ namespace WholeBodyPosition {
                                                                    const cnoid::BodyPtr& robot_ref,
                                                                    const std::map<std::string, std::shared_ptr<PositionTask> >& positionTaskMap,
                                                                    std::unordered_map<cnoid::LinkPtr, std::vector<std::shared_ptr<joint_limit_table::JointLimitTable> > >& jointLimitTablesMap,
-                                                                   const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, // current self collision state
+                                                                   const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& selfCollisions, // current self collision state
+                                                                   const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& envCollisions, // current self collision state
                                                                    const std::vector<cnoid::LinkPtr>& useJoints,
                                                                    double dt,
                                                                    bool followRootLink,
@@ -390,25 +392,27 @@ namespace WholeBodyPosition {
     // 重心速度上下限を取得
     PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, limitConstraint, robot_com, dt, comVelocityLimit);
 
-    // 関節角度上下限を取得
-    PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, collisions, dt, 10.0); //weightはweを増やしている
+    // 自己干渉上下限を取得
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 10.0); //weightはweを増やしている
 
     // 重みにより優先度をつけて同時に解くことが可能なのは、目標位置が重要なタスクで、エラーに同じくらいの大きさで頭打ちをしている場合. 一回の周期での変位は必ずしも優先度通りでは無いが、全体としては優先度をつけて目標位置に収束する. 逆に、一回の周期での変位が重要なタスクは不可. すなわち関節角速度制約や目標角運動量は不可.
     // 高優先度タスクが満たされていない場合、weが大きくなるので、低優先度タスクが必要以上に収束が遅くなる. 高優先度タスクの目標位置を速く動かすと、低優先度タスクが一時的に満たされなくなることが発生する
-    // 不等式制約があるからか、不等式制約が無いときと比べてweを少し大きめにしないと振動する
+    // 不等式制約があるからか、不等式制約が無いときと比べてweを少し大きめにしないと振動する. weightを大きくすることはweを増やすことにつながる
     std::vector<std::shared_ptr<IK::IKConstraint> > softConstraint;
 
     // primitive motion levelのIKConstraintを取得
     for(std::map<std::string, std::shared_ptr<PositionController::PositionTask> >::const_iterator it = positionTaskMap.begin(); it != positionTaskMap.end(); it++) {
-      it->second->getIKConstraintsforSupportEEF(softConstraint, robot_com, dt, 10.0);//weightはweを増やしている
-      it->second->getIKConstraintsforCOM(softConstraint, robot_com, dt, 3.0);//weightはweを増やしている
-      it->second->getIKConstraintsforCOMRegion(softConstraint, robot_com, dt, 10.0);//weightはweを増やしている
-      it->second->getIKConstraintsforInteractEEF(softConstraint, robot_com, dt, 1.0);//weightはweを増やしている
+      it->second->getIKConstraintsforSupportEEF(softConstraint, robot_com, dt, 16.0);
+      it->second->getIKConstraintsforCOM(softConstraint, robot_com, dt, 4.0);//weightはweを増やしている
+      it->second->getIKConstraintsforCOMRegion(softConstraint, robot_com, dt, 16.0);//weightはweを増やしている
+      it->second->getIKConstraintsforInteractEEF(softConstraint, robot_com, dt, 2.0);//weightはweを増やしている
     }
 
     // command levelのIKConstraintを取得
     PositionController::getCommandLevelIKConstraints(robot_ref, this->jointAngleConstraint_, this->rootLinkConstraint_, softConstraint, robot_com, dt, followRootLink, 0.1);
 
+    // 環境干渉上下限を取得
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softConstraint, robot_com, envCollisions, dt, 0.04, 8.0); //weightはweを増やしている
 
     std::vector<std::vector<std::shared_ptr<IK::IKConstraint> > > ikConstraint;
     ikConstraint.push_back(jointVelocityConstraint);

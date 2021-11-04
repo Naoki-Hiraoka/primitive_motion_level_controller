@@ -268,7 +268,7 @@ if __name__ == "__main__":
             if is_active:
                 msg = PrimitiveStateArray()
                 for end_effector in end_effectors:
-                    msg.primitive_state.append(end_effector.state)
+                    msg.primitive_state.append(copy.deepcopy(end_effector.state))
                 pub.publish(msg)
             r.sleep()
     except rospy.ROSInterruptException:

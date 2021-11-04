@@ -34,7 +34,8 @@ RTC::ReturnCode_t WholeBodyPositionController::onInitialize(){
   addInPort("basePosRefIn", this->ports_.m_basePosRefIn_);
   addInPort("baseRpyRefIn", this->ports_.m_baseRpyRefIn_);
   addInPort("primitiveCommandRefIn", this->ports_.m_primitiveCommandRefIn_);
-  addInPort("collisionComIn", this->ports_.m_collisionComIn_);
+  addInPort("selfCollisionComIn", this->ports_.m_selfCollisionComIn_);
+  addInPort("envCollisionComIn", this->ports_.m_envCollisionComIn_);
   addOutPort("qComOut", this->ports_.m_qComOut_);
   addOutPort("basePosComOut", this->ports_.m_basePosComOut_);
   addOutPort("baseRpyComOut", this->ports_.m_baseRpyComOut_);
@@ -97,41 +98,58 @@ RTC::ReturnCode_t WholeBodyPositionController::onInitialize(){
   return RTC::RTC_OK;
 }
 
-void WholeBodyPositionController::readPorts(const std::string& instance_name, WholeBodyPositionController::Ports& port) {
-  if(port.m_qRefIn_.isNew()) port.m_qRefIn_.read();
-  if(port.m_basePosRefIn_.isNew()) port.m_basePosRefIn_.read();
-  if(port.m_baseRpyRefIn_.isNew()) port.m_baseRpyRefIn_.read();
-  if(port.m_primitiveCommandRefIn_.isNew()) port.m_primitiveCommandRefIn_.read();
-  if(port.m_collisionComIn_.isNew()) port.m_collisionComIn_.read();
-}
-
-  // calc reference state (without ee. q, basepos and baserpy only)
-void WholeBodyPositionController::calcReferenceRobot(const std::string& instance_name, const WholeBodyPositionController::Ports& port, cnoid::BodyPtr& robot) {
-  if(port.m_qRef_.data.length() == robot->numJoints()){
-    for ( int i = 0; i < robot->numJoints(); i++ ){
-      robot->joint(i)->q() = port.m_qRef_.data[i];
+// calc reference state (without ee. q, basepos and baserpy only)
+void WholeBodyPositionController::calcReferenceRobot(const std::string& instance_name, WholeBodyPositionController::Ports& port, cnoid::BodyPtr& robot) {
+  if(port.m_qRefIn_.isNew()) {
+    port.m_qRefIn_.read();
+    if(port.m_qRef_.data.length() == robot->numJoints()){
+      for ( int i = 0; i < robot->numJoints(); i++ ){
+        robot->joint(i)->q() = port.m_qRef_.data[i];
+      }
     }
   }
-  robot->rootLink()->p()[0] = port.m_basePosRef_.data.x;
-  robot->rootLink()->p()[1] = port.m_basePosRef_.data.y;
-  robot->rootLink()->p()[2] = port.m_basePosRef_.data.z;
-  robot->rootLink()->R() = cnoid::rotFromRpy(port.m_baseRpyRef_.data.r, port.m_baseRpyRef_.data.p, port.m_baseRpyRef_.data.y);
+  if(port.m_basePosRefIn_.isNew()) {
+    port.m_basePosRefIn_.read();
+    robot->rootLink()->p()[0] = port.m_basePosRef_.data.x;
+    robot->rootLink()->p()[1] = port.m_basePosRef_.data.y;
+    robot->rootLink()->p()[2] = port.m_basePosRef_.data.z;
+  }
+  if(port.m_baseRpyRefIn_.isNew()) {
+    port.m_baseRpyRefIn_.read();
+    robot->rootLink()->R() = cnoid::rotFromRpy(port.m_baseRpyRef_.data.r, port.m_baseRpyRef_.data.p, port.m_baseRpyRef_.data.y);
+  }
   robot->calcForwardKinematics();
   robot->calcCenterOfMass();
 }
 
-void WholeBodyPositionController::getPrimitiveCommand(const std::string& instance_name, const WholeBodyPositionController::Ports& port, double dt, primitive_motion_level_tools::PrimitiveStates& primitiveStates) {
-  primitiveStates.updateFromIdl(port.m_primitiveCommandRef_);
+void WholeBodyPositionController::getPrimitiveCommand(const std::string& instance_name, WholeBodyPositionController::Ports& port, double dt, primitive_motion_level_tools::PrimitiveStates& primitiveStates) {
+  if(port.m_primitiveCommandRefIn_.isNew()) {
+    port.m_primitiveCommandRefIn_.read();
+    primitiveStates.updateFromIdl(port.m_primitiveCommandRef_);
+  }
   primitiveStates.updateTargetForOneStep(dt);
 }
 
-void WholeBodyPositionController::getCollision(const std::string& instance_name, const WholeBodyPositionController::Ports& port, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions) {
-  collisions.resize(port.m_collisionCom_.data.length());
-  // 各collisionの反映
-  for(size_t i=0;i<port.m_collisionCom_.data.length();i++){
-    const collision_checker_msgs::CollisionIdl& idl = port.m_collisionCom_.data[i];
-    if(!collisions[i]) collisions[i] = std::make_shared<WholeBodyPosition::Collision>();
-    collisions[i]->updateFromIdl(idl);
+void WholeBodyPositionController::getCollision(const std::string& instance_name, WholeBodyPositionController::Ports& port, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& selfCollisions, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& envCollisions) {
+  if(port.m_selfCollisionComIn_.isNew()) {
+    port.m_selfCollisionComIn_.read();
+    selfCollisions.resize(port.m_selfCollisionCom_.data.length());
+    // 各collisionの反映
+    for(size_t i=0;i<port.m_selfCollisionCom_.data.length();i++){
+      const collision_checker_msgs::CollisionIdl& idl = port.m_selfCollisionCom_.data[i];
+      if(!selfCollisions[i]) selfCollisions[i] = std::make_shared<WholeBodyPosition::Collision>();
+      selfCollisions[i]->updateFromIdl(idl);
+    }
+  }
+  if(port.m_envCollisionComIn_.isNew()) {
+    port.m_envCollisionComIn_.read();
+    envCollisions.resize(port.m_envCollisionCom_.data.length());
+    // 各collisionの反映
+    for(size_t i=0;i<port.m_envCollisionCom_.data.length();i++){
+      const collision_checker_msgs::CollisionIdl& idl = port.m_envCollisionCom_.data[i];
+      if(!envCollisions[i]) envCollisions[i] = std::make_shared<WholeBodyPosition::Collision>();
+      envCollisions[i]->updateFromIdl(idl);
+    }
   }
 }
 
@@ -255,17 +273,14 @@ RTC::ReturnCode_t WholeBodyPositionController::onExecute(RTC::UniqueId ec_id){
   std::string instance_name = std::string(this->m_profile.instance_name);
   double dt = 1.0 / this->get_context(ec_id)->get_rate();
 
-  // read ports
-  WholeBodyPositionController::readPorts(instance_name, this->ports_);
-
   // calc reference state from inport (without ee. q, basepos and baserpy only)
   WholeBodyPositionController::calcReferenceRobot(instance_name, this->ports_, this->m_robot_ref_);
 
-  // get primitive motion level command
+  // get primitive motion level command from inport
   WholeBodyPositionController::getPrimitiveCommand(instance_name, this->ports_, dt, this->primitiveStates_);
 
-  // get self collision states for collision avoidance
-  WholeBodyPositionController::getCollision(instance_name, this->ports_, this->collisions_);
+  // get collision states for collision avoidance from inport
+  WholeBodyPositionController::getCollision(instance_name, this->ports_, this->selfCollisions_, this->envCollisions_);
 
   // mode遷移を実行
   WholeBodyPositionController::processModeTransition(instance_name, this->mode_, dt, this->m_robot_ref_, this->m_robot_com_, this->outputOffsetInterpolators_);
@@ -278,7 +293,7 @@ RTC::ReturnCode_t WholeBodyPositionController::onExecute(RTC::UniqueId ec_id){
       WholeBodyPositionController::preProcessForControl(instance_name, this->positionController_);
     }
 
-    this->positionController_.control(this->primitiveStates_.primitiveState(), this->collisions_, this->m_robot_ref_, this->useJoints_, this->jointLimitTablesMap_, this->m_robot_com_, dt, this->debugLevel_);
+    this->positionController_.control(this->primitiveStates_.primitiveState(), this->selfCollisions_, this->envCollisions_, this->m_robot_ref_, this->useJoints_, this->jointLimitTablesMap_, this->m_robot_com_, dt, this->debugLevel_);
 
   } else {
     // robot_refをrobot_comへ

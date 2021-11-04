@@ -39,7 +39,8 @@ public:
       m_basePosRefIn_("basePosRefIn", m_basePosRef_),// from sh
       m_baseRpyRefIn_("baseRpyRefIn", m_baseRpyRef_),// from sh
       m_primitiveCommandRefIn_("primitiveCommandRefIn", m_primitiveCommandRef_),
-      m_collisionComIn_("collisionComIn", m_collisionCom_),
+      m_selfCollisionComIn_("selfCollisionComIn", m_selfCollisionCom_),
+      m_envCollisionComIn_("envCollisionComIn", m_envCollisionCom_),
 
       m_qComOut_("qComOut", m_qCom_),
       m_basePosComOut_("basePosComOut", m_basePosCom_),
@@ -59,8 +60,10 @@ public:
     RTC::InPort<RTC::TimedOrientation3D> m_baseRpyRefIn_;
     primitive_motion_level_msgs::TimedPrimitiveStateSeq m_primitiveCommandRef_;
     RTC::InPort <primitive_motion_level_msgs::TimedPrimitiveStateSeq> m_primitiveCommandRefIn_;
-    collision_checker_msgs::TimedCollisionSeq m_collisionCom_;
-    RTC::InPort <collision_checker_msgs::TimedCollisionSeq> m_collisionComIn_;
+    collision_checker_msgs::TimedCollisionSeq m_selfCollisionCom_;
+    RTC::InPort <collision_checker_msgs::TimedCollisionSeq> m_selfCollisionComIn_;
+    collision_checker_msgs::TimedCollisionSeq m_envCollisionCom_;
+    RTC::InPort <collision_checker_msgs::TimedCollisionSeq> m_envCollisionComIn_;
 
     RTC::TimedDoubleSeq m_qCom_;
     RTC::OutPort<RTC::TimedDoubleSeq> m_qComOut_;
@@ -148,16 +151,16 @@ protected:
 
   // 1. portから受け取ったprimitive motion level 指令など
   primitive_motion_level_tools::PrimitiveStates primitiveStates_;
-  std::vector<std::shared_ptr<WholeBodyPosition::Collision> > collisions_;
+  std::vector<std::shared_ptr<WholeBodyPosition::Collision> > selfCollisions_;
+  std::vector<std::shared_ptr<WholeBodyPosition::Collision> > envCollisions_;
 
   // 2. primitiveCommandMap_を受け取り、m_robot_comを計算する
   WholeBodyPosition::PositionController positionController_;
 
   // static functions
-  static void readPorts(const std::string& instance_name, WholeBodyPositionController::Ports& port);
-  static void calcReferenceRobot(const std::string& instance_name, const WholeBodyPositionController::Ports& port, cnoid::BodyPtr& robot);
-  static void getPrimitiveCommand(const std::string& instance_name, const WholeBodyPositionController::Ports& port, double dt, primitive_motion_level_tools::PrimitiveStates& primitiveStates);
-  static void getCollision(const std::string& instance_name, const WholeBodyPositionController::Ports& port, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions);
+  static void calcReferenceRobot(const std::string& instance_name, WholeBodyPositionController::Ports& port, cnoid::BodyPtr& robot);
+  static void getPrimitiveCommand(const std::string& instance_name, WholeBodyPositionController::Ports& port, double dt, primitive_motion_level_tools::PrimitiveStates& primitiveStates);
+  static void getCollision(const std::string& instance_name, WholeBodyPositionController::Ports& port, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& selfCollisions, std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& envCollisions);
   static void processModeTransition(const std::string& instance_name, WholeBodyPositionController::ControlMode& mode, const double dt, const cnoid::BodyPtr& robot_ref, const cnoid::BodyPtr& robot_com, WholeBodyPositionController::OutputOffsetInterpolators& outputOffsetInterpolators);
   static void preProcessForControl(const std::string& instance_name, WholeBodyPosition::PositionController& positionController);
   static void passThrough(const std::string& instance_name, const cnoid::BodyPtr& robot_ref, cnoid::BodyPtr& robot_com, WholeBodyPositionController::OutputOffsetInterpolators& outputOffsetInterpolators, double dt, const std::vector<cnoid::LinkPtr>& useJoints = std::vector<cnoid::LinkPtr>());

@@ -178,7 +178,7 @@ void WholeBodyTorqueController::calcActualRobot(const std::string& instance_name
 
     if(false && !robot->rootLink()->isFixedJoint()){
       // ここは後で考える TODO
-      cnoid::AccelerationSensorPtr imu = robot->findDevice<cnoid::AccelerationSensor>("gyrometer");
+      cnoid::AccelerationSensorPtr imu = robot->findDevice<cnoid::AccelerationSensor>("gsensor");
       cnoid::Matrix3 imuR = imu->link()->R() * imu->R_local();
       cnoid::Matrix3 actR = cnoid::rotFromRpy(port.m_imuAct_.data.r, port.m_imuAct_.data.p, port.m_imuAct_.data.y);
       robot->rootLink()->R() = actR * (imuR.transpose() * robot->rootLink()->R());

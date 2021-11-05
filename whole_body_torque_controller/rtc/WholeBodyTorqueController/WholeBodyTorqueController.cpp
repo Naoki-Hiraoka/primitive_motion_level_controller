@@ -1,7 +1,6 @@
 #include "WholeBodyTorqueController.h"
 #include <cnoid/BodyLoader>
-#include <cnoid/ForceSensor>
-#include <cnoid/AccelerationSensor>
+#include <cnoid/BasicSensors>
 #include <cnoid/EigenUtil>
 #include <cnoid/ValueTree>
 
@@ -177,7 +176,7 @@ void WholeBodyTorqueController::calcActualRobot(const std::string& instance_name
     }
     robot->calcForwardKinematics();
 
-    if(!robot->rootLink()->isFixedJoint()){
+    if(false && !robot->rootLink()->isFixedJoint()){
       // ここは後で考える TODO
       cnoid::AccelerationSensorPtr imu = robot->findDevice<cnoid::AccelerationSensor>("gyrometer");
       cnoid::Matrix3 imuR = imu->link()->R() * imu->R_local();

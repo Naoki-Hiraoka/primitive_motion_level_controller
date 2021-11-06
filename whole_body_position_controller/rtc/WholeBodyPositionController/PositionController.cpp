@@ -178,7 +178,7 @@ namespace WholeBodyPosition {
       if(jointAngleConstraint.find(robot_com->joint(i))==jointAngleConstraint.end()){
         std::shared_ptr<IK::JointAngleConstraint> jac = std::make_shared<IK::JointAngleConstraint>();
         jac->joint() = robot_com->joint(i);
-        jac->maxError() = 1.0 * dt;
+        jac->maxError() = 1.0 * dt; // primitive motion level の10分の1以下にしないと優先度逆転する
         jac->weight() = weight;
         jointAngleConstraint[robot_com->joint(i)] = jac;
       }
@@ -192,7 +192,7 @@ namespace WholeBodyPosition {
         rootLinkConstraint->A_link() = robot_com->rootLink();
         rootLinkConstraint->A_localpos() = cnoid::Position::Identity();
         rootLinkConstraint->B_link() = nullptr;
-        rootLinkConstraint->maxError() << 1*dt, 1*dt, 1*dt, 1*dt, 1*dt, 1*dt;
+        rootLinkConstraint->maxError() << 10.0*dt, 10.0*dt, 10.0*dt, 10.0*dt, 10.0*dt, 10.0*dt;
         rootLinkConstraint->precision() << 1e-4, 1e-4, 1e-4, 0.001745, 0.001745, 0.001745;
         rootLinkConstraint->weight() << 1.0,1.0,1.0,1.0,1.0,1.0;
         rootLinkConstraint->weight() *= weight;
@@ -396,28 +396,30 @@ namespace WholeBodyPosition {
     // 自己干渉上下限を取得
     PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 1.0, 10.0); //weightはweを増やしている
 
-    // 重みにより優先度をつけて同時に解くことが可能なのは、目標位置が重要なタスクで、エラーに同じくらいの大きさで頭打ちをしている場合. 一回の周期での変位は必ずしも優先度通りでは無いが、全体としては優先度をつけて目標位置に収束する. 逆に、一回の周期での変位が重要なタスクは不可. すなわち関節角速度制約や目標角運動量は不可.
-    // 高優先度タスクが満たされていない場合、weが大きくなるので、低優先度タスクが必要以上に収束が遅くなる. 高優先度タスクの目標位置を速く動かすと、低優先度タスクが一時的に満たされなくなることが発生する
+    std::vector<std::shared_ptr<IK::IKConstraint> > softLimitConstraint;
+    // 環境干渉上下限を取得
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softLimitConstraint, robot_com, envCollisions, dt, 0.04, 1.0/dt, 10.0); //weightはweを増やしている. ビジョンのノイズを受けるので、velocitydamperをつける
+
+    // 重みにより優先度をつけて同時に解くことが可能なのは、目標位置が重要なタスクで、エラーに同じくらいの大きさで頭打ちをしている場合. 一回の周期での変位は必ずしも優先度通りでは無いが、全体としては優先度をつけて目標位置に収束する. 逆に、一回の周期での変位が重要なタスクは不可. すなわち関節角速度制約や目標角運動量, velocityDamperは不可.
+    // 高優先度タスクが満たされていない場合、weが大きくなるので、低優先度タスクが必要以上に収束が遅くなる. 高優先度タスクの目標位置を速く動かすと、低優先度タスクが一時的に満たされなくなることが発生する. weightの大きさの差は数十倍までが限度ではないか
     // 不等式制約があるからか、不等式制約が無いときと比べてweを少し大きめにしないと振動する. weightを大きくすることはweを増やすことにつながる
     std::vector<std::shared_ptr<IK::IKConstraint> > softConstraint;
 
     // primitive motion levelのIKConstraintを取得
     for(std::map<std::string, std::shared_ptr<PositionController::PositionTask> >::const_iterator it = positionTaskMap.begin(); it != positionTaskMap.end(); it++) {
-      it->second->getIKConstraintsforSupportEEF(softConstraint, robot_com, dt, 16.0);
-      it->second->getIKConstraintsforCOM(softConstraint, robot_com, dt, 4.0);//weightはweを増やしている
-      it->second->getIKConstraintsforCOMRegion(softConstraint, robot_com, dt, 16.0);//weightはweを増やしている
+      it->second->getIKConstraintsforSupportEEF(softConstraint, robot_com, dt, 18.0);
+      it->second->getIKConstraintsforCOM(softConstraint, robot_com, dt, 6.0);//weightはweを増やしている
+      it->second->getIKConstraintsforCOMRegion(softConstraint, robot_com, dt, 18.0);//weightはweを増やしている
       it->second->getIKConstraintsforInteractEEF(softConstraint, robot_com, dt, 2.0);//weightはweを増やしている
     }
 
     // command levelのIKConstraintを取得
     PositionController::getCommandLevelIKConstraints(robot_ref, this->jointAngleConstraint_, this->rootLinkConstraint_, softConstraint, robot_com, dt, followRootLink, 0.1);
 
-    // 環境干渉上下限を取得
-    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softConstraint, robot_com, envCollisions, dt, 0.04, /*1.0/dt*/1.0, 8.0); //weightはweを増やしている
-
     std::vector<std::vector<std::shared_ptr<IK::IKConstraint> > > ikConstraint;
     ikConstraint.push_back(jointVelocityConstraint);
     ikConstraint.push_back(limitConstraint);
+    ikConstraint.push_back(softLimitConstraint);
     ikConstraint.push_back(softConstraint);
 
     for(int i=0;i<ikConstraint.size();i++) for(size_t j=0;j<ikConstraint[i].size();j++) ikConstraint[i][j]->debuglevel() = debugLevel;

@@ -169,6 +169,9 @@ namespace primitive_motion_level_tools {
       this->primitiveStates_[0]->time() -= dt;
       if(this->primitiveStates_[0]->time()<0.0) this->primitiveStates_[0]->time() = 0.0;
     }
+    for(int i=0;i<this->primitiveStates_.size();i++){
+      this->primitiveStates_[i]->updateTargetForOneStep(dt);
+    }
   }
 
 };

@@ -413,7 +413,7 @@ namespace WholeBodyPosition {
     PositionController::getCommandLevelIKConstraints(robot_ref, this->jointAngleConstraint_, this->rootLinkConstraint_, softConstraint, robot_com, dt, followRootLink, 0.1);
 
     // 環境干渉上下限を取得
-    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softConstraint, robot_com, envCollisions, dt, 0.04, 1.0/dt, 8.0); //weightはweを増やしている
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softConstraint, robot_com, envCollisions, dt, 0.04, /*1.0/dt*/1.0, 8.0); //weightはweを増やしている
 
     std::vector<std::vector<std::shared_ptr<IK::IKConstraint> > > ikConstraint;
     ikConstraint.push_back(jointVelocityConstraint);

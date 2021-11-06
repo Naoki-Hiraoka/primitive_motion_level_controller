@@ -6,13 +6,17 @@
 PrimitiveStateROSBridge::PrimitiveStateROSBridge(RTC::Manager* manager):
   RTC::DataFlowComponentBase(manager),
   m_primitiveCommandROSOut_("primitiveStateOut", m_primitiveCommandROS_),
-  m_primitiveCommandRTMIn_("primitiveStateIn", m_primitiveCommandRTM_)
+  m_primitiveCommandRTMIn_("primitiveStateIn", m_primitiveCommandRTM_),
+  m_primitiveCommandSeqROSOut_("primitiveStateSeqOut", m_primitiveCommandSeqROS_),
+  m_primitiveCommandSeqRTMIn_("primitiveStateSeqIn", m_primitiveCommandSeqRTM_)
 {
 }
 
 RTC::ReturnCode_t PrimitiveStateROSBridge::onInitialize(){
   addOutPort("primitiveStateOut", m_primitiveCommandROSOut_);
   addInPort("primitiveStateIn", m_primitiveCommandRTMIn_);
+  addOutPort("primitiveStateSeqOut", m_primitiveCommandSeqROSOut_);
+  addInPort("primitiveStateSeqIn", m_primitiveCommandSeqRTMIn_);
 
   cnoid::BodyLoader bodyLoader;
 
@@ -31,6 +35,8 @@ RTC::ReturnCode_t PrimitiveStateROSBridge::onInitialize(){
   ros::NodeHandle pnh("~");
   sub_ = pnh.subscribe("input", 1, &PrimitiveStateROSBridge::topicCallback, this);
   pub_ = pnh.advertise<primitive_motion_level_msgs::PrimitiveStateArray>("output", 1);
+  seqSub_ = pnh.subscribe("seq_input", 1, &PrimitiveStateROSBridge::seqTopicCallback, this);
+  seqPub_ = pnh.advertise<primitive_motion_level_msgs::PrimitiveStateArrayArray>("seq_output", 1);
 
   return RTC::RTC_OK;
 }
@@ -69,76 +75,28 @@ RTC::ReturnCode_t PrimitiveStateROSBridge::onExecute(RTC::UniqueId ec_id){
     msg.header.stamp = ros::Time::now();
     for(int i=0;i<m_primitiveCommandRTM_.data.length();i++){
       primitive_motion_level_msgs::PrimitiveState state;
-      state.name = std::string(m_primitiveCommandRTM_.data[i].name);
-      if(std::string(m_primitiveCommandRTM_.data[i].parentLinkName) == "com") state.parent_link_name = "com";
-      else state.parent_link_name = VRMLToURDFLinkName(this->robot_vrml_, this->robot_urdf_, std::string(m_primitiveCommandRTM_.data[i].parentLinkName));
-      state.local_pose.position.x = m_primitiveCommandRTM_.data[i].localPose.position.x;
-      state.local_pose.position.y = m_primitiveCommandRTM_.data[i].localPose.position.y;
-      state.local_pose.position.z = m_primitiveCommandRTM_.data[i].localPose.position.z;
-      tf2::Quaternion quat;
-      quat.setRPY(m_primitiveCommandRTM_.data[i].localPose.orientation.r,
-                  m_primitiveCommandRTM_.data[i].localPose.orientation.p,
-                  m_primitiveCommandRTM_.data[i].localPose.orientation.y);
-      state.local_pose.orientation.x = quat.x();
-      state.local_pose.orientation.y = quat.y();
-      state.local_pose.orientation.z = quat.z();
-      state.local_pose.orientation.w = quat.w();
-      state.time = m_primitiveCommandRTM_.data[i].time;
-      state.pose.position.x = m_primitiveCommandRTM_.data[i].pose.position.x;
-      state.pose.position.y = m_primitiveCommandRTM_.data[i].pose.position.y;
-      state.pose.position.z = m_primitiveCommandRTM_.data[i].pose.position.z;
-      quat.setRPY(m_primitiveCommandRTM_.data[i].pose.orientation.r,
-                  m_primitiveCommandRTM_.data[i].pose.orientation.p,
-                  m_primitiveCommandRTM_.data[i].pose.orientation.y);
-      state.pose.orientation.x = quat.x();
-      state.pose.orientation.y = quat.y();
-      state.pose.orientation.z = quat.z();
-      state.pose.orientation.w = quat.w();
-      state.wrench.resize(6);
-      for(int j=0;j<6;j++) state.wrench[j] = m_primitiveCommandRTM_.data[i].wrench[j];
-      state.pose_follow_gain.resize(6);
-      for(int j=0;j<6;j++) state.pose_follow_gain[j] = m_primitiveCommandRTM_.data[i].poseFollowGain[j];
-      state.wrench_follow_gain.resize(6);
-      for(int j=0;j<6;j++) state.wrench_follow_gain[j] = m_primitiveCommandRTM_.data[i].wrenchFollowGain[j];
-      state.is_poseC_global = m_primitiveCommandRTM_.data[i].isPoseCGlobal;
-      state.poseC.resize(m_primitiveCommandRTM_.data[i].poseC.length()*6);
-      for(int j=0;j<m_primitiveCommandRTM_.data[i].poseC.length();j++){
-        for(int k=0;k<6;k++) state.poseC[j*6+k] = m_primitiveCommandRTM_.data[i].poseC[j][k];
-      }
-      state.poseld.resize(m_primitiveCommandRTM_.data[i].poseld.length());
-      for(int j=0;j<m_primitiveCommandRTM_.data[i].poseld.length();j++){
-        state.poseld[j] = m_primitiveCommandRTM_.data[i].poseld[j];
-      }
-      state.poseud.resize(m_primitiveCommandRTM_.data[i].poseud.length());
-      for(int j=0;j<m_primitiveCommandRTM_.data[i].poseud.length();j++){
-        state.poseud[j] = m_primitiveCommandRTM_.data[i].poseud[j];
-      }
-      state.is_wrenchC_global = m_primitiveCommandRTM_.data[i].isWrenchCGlobal;
-      state.wrenchC.resize(m_primitiveCommandRTM_.data[i].wrenchC.length()*6);
-      for(int j=0;j<m_primitiveCommandRTM_.data[i].wrenchC.length();j++){
-        for(int k=0;k<6;k++) state.wrenchC[j*6+k] = m_primitiveCommandRTM_.data[i].wrenchC[j][k];
-      }
-      state.wrenchld.resize(m_primitiveCommandRTM_.data[i].wrenchld.length());
-      for(int j=0;j<m_primitiveCommandRTM_.data[i].wrenchld.length();j++){
-        state.wrenchld[j] = m_primitiveCommandRTM_.data[i].wrenchld[j];
-      }
-      state.wrenchud.resize(m_primitiveCommandRTM_.data[i].wrenchud.length());
-      for(int j=0;j<m_primitiveCommandRTM_.data[i].wrenchud.length();j++){
-        state.wrenchud[j] = m_primitiveCommandRTM_.data[i].wrenchud[j];
-      }
-      state.M.resize(6);
-      for(int j=0;j<6;j++) state.M[j] = m_primitiveCommandRTM_.data[i].M[j];
-      state.D.resize(6);
-      for(int j=0;j<6;j++) state.D[j] = m_primitiveCommandRTM_.data[i].D[j];
-      state.K.resize(6);
-      for(int j=0;j<6;j++) state.K[j] = m_primitiveCommandRTM_.data[i].K[j];
-      state.act_wrench.resize(6);
-      for(int j=0;j<6;j++) state.act_wrench[j] = m_primitiveCommandRTM_.data[i].actWrench[j];
-      state.support_com = m_primitiveCommandRTM_.data[i].supportCOM;
-
+      PrimitiveStateROSBridge::primitiveStateIdl2Msg(m_primitiveCommandRTM_.data[i], state, this->robot_vrml_, this->robot_urdf_);
       msg.primitive_state.push_back(state);
     }
     this->pub_.publish(msg);
+  }
+  if(this->m_primitiveCommandSeqRTMIn_.isNew()){
+    this->m_primitiveCommandSeqRTMIn_.read();
+
+    primitive_motion_level_msgs::PrimitiveStateArrayArray msg;
+    msg.header.stamp = ros::Time::now();
+    for(int i=0;i<m_primitiveCommandSeqRTM_.data.length();i++){
+      primitive_motion_level_msgs::PrimitiveStateArray stateArray;
+      stateArray.header.stamp.sec = m_primitiveCommandSeqRTM_.data[i].tm.sec;
+      stateArray.header.stamp.nsec = m_primitiveCommandSeqRTM_.data[i].tm.nsec;
+      for(int j=0;j<m_primitiveCommandSeqRTM_.data[i].data.length();j++){
+        primitive_motion_level_msgs::PrimitiveState state;
+        PrimitiveStateROSBridge::primitiveStateIdl2Msg(m_primitiveCommandSeqRTM_.data[i].data[j], state, this->robot_vrml_, this->robot_urdf_);
+        stateArray.primitive_state.push_back(state);
+      }
+      msg.primitive_states.push_back(stateArray);
+    }
+    this->seqPub_.publish(msg);
   }
 
   return RTC::RTC_OK;
@@ -150,93 +108,182 @@ void PrimitiveStateROSBridge::topicCallback(const primitive_motion_level_msgs::P
   m_primitiveCommandROS_.tm.nsec = coiltm.usec() * 1000;
   m_primitiveCommandROS_.data.length(msg->primitive_state.size());
   for(int i=0;i<msg->primitive_state.size();i++){
-    m_primitiveCommandROS_.data[i].name = msg->primitive_state[i].name.c_str();
-    if(msg->primitive_state[i].parent_link_name == "com") m_primitiveCommandROS_.data[i].parentLinkName = "com";
-    else m_primitiveCommandROS_.data[i].parentLinkName = URDFToVRMLLinkName(this->robot_vrml_, this->robot_urdf_, msg->primitive_state[i].parent_link_name).c_str();
-    m_primitiveCommandROS_.data[i].localPose.position.x = msg->primitive_state[i].local_pose.position.x;
-    m_primitiveCommandROS_.data[i].localPose.position.y = msg->primitive_state[i].local_pose.position.y;
-    m_primitiveCommandROS_.data[i].localPose.position.z = msg->primitive_state[i].local_pose.position.z;
-    tf2::Quaternion quat(msg->primitive_state[i].local_pose.orientation.x,msg->primitive_state[i].local_pose.orientation.y,msg->primitive_state[i].local_pose.orientation.z,msg->primitive_state[i].local_pose.orientation.w);
-    tf2::Matrix3x3(quat).getRPY(m_primitiveCommandROS_.data[i].localPose.orientation.r,m_primitiveCommandROS_.data[i].localPose.orientation.p,m_primitiveCommandROS_.data[i].localPose.orientation.y);
-    m_primitiveCommandROS_.data[i].time = msg->primitive_state[i].time;
-    m_primitiveCommandROS_.data[i].pose.position.x = msg->primitive_state[i].pose.position.x;
-    m_primitiveCommandROS_.data[i].pose.position.y = msg->primitive_state[i].pose.position.y;
-    m_primitiveCommandROS_.data[i].pose.position.z = msg->primitive_state[i].pose.position.z;
-    quat = tf2::Quaternion(msg->primitive_state[i].pose.orientation.x,msg->primitive_state[i].pose.orientation.y,msg->primitive_state[i].pose.orientation.z,msg->primitive_state[i].pose.orientation.w);
-    tf2::Matrix3x3(quat).getRPY(m_primitiveCommandROS_.data[i].pose.orientation.r,m_primitiveCommandROS_.data[i].pose.orientation.p,m_primitiveCommandROS_.data[i].pose.orientation.y);
-    if(msg->primitive_state[i].wrench.size() == 6){
-      for(int j=0;j<msg->primitive_state[i].wrench.size();j++) m_primitiveCommandROS_.data[i].wrench[j] = msg->primitive_state[i].wrench[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].wrench.size();j++) m_primitiveCommandROS_.data[i].wrench[j] = 0.0;
-    }
-    if(msg->primitive_state[i].pose_follow_gain.size() == 6) {
-      for(int j=0;j<msg->primitive_state[i].pose_follow_gain.size();j++) m_primitiveCommandROS_.data[i].poseFollowGain[j] = msg->primitive_state[i].pose_follow_gain[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].pose_follow_gain.size();j++) m_primitiveCommandROS_.data[i].poseFollowGain[j] = 0.0;
-    }
-    if(msg->primitive_state[i].wrench_follow_gain.size() == 6) {
-      for(int j=0;j<msg->primitive_state[i].wrench_follow_gain.size();j++) m_primitiveCommandROS_.data[i].wrenchFollowGain[j] = msg->primitive_state[i].wrench_follow_gain[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].wrench_follow_gain.size();j++) m_primitiveCommandROS_.data[i].wrenchFollowGain[j] = 0.0;
-    }
-    m_primitiveCommandROS_.data[i].isPoseCGlobal = msg->primitive_state[i].is_poseC_global;
-    if(msg->primitive_state[i].poseC.size() % 6 == 0){
-      m_primitiveCommandROS_.data[i].poseC.length(msg->primitive_state[i].poseC.size() / 6);
-      for(int j=0;j<m_primitiveCommandROS_.data[i].poseC.length(); j++) {
-        for(int k=0;k<6;k++){
-          m_primitiveCommandROS_.data[i].poseC[j][k] = msg->primitive_state[i].poseC[j*6+k];
-        }
-      }
-    }
-    m_primitiveCommandROS_.data[i].poseld.length(msg->primitive_state[i].poseld.size());
-    for(int j=0;j<m_primitiveCommandROS_.data[i].poseld.length(); j++) {
-        m_primitiveCommandROS_.data[i].poseld[j] = msg->primitive_state[i].poseld[j];
-    }
-    m_primitiveCommandROS_.data[i].poseud.length(msg->primitive_state[i].poseud.size());
-    for(int j=0;j<m_primitiveCommandROS_.data[i].poseud.length(); j++) {
-        m_primitiveCommandROS_.data[i].poseud[j] = msg->primitive_state[i].poseud[j];
-    }
-    m_primitiveCommandROS_.data[i].isWrenchCGlobal = msg->primitive_state[i].is_wrenchC_global;
-    if(msg->primitive_state[i].wrenchC.size() % 6 == 0){
-      m_primitiveCommandROS_.data[i].wrenchC.length(msg->primitive_state[i].wrenchC.size() / 6);
-      for(int j=0;j<m_primitiveCommandROS_.data[i].wrenchC.length(); j++) {
-        for(int k=0;k<6;k++){
-          m_primitiveCommandROS_.data[i].wrenchC[j][k] = msg->primitive_state[i].wrenchC[j*6+k];
-        }
-      }
-    }
-    m_primitiveCommandROS_.data[i].wrenchld.length(msg->primitive_state[i].wrenchld.size());
-    for(int j=0;j<m_primitiveCommandROS_.data[i].wrenchld.length(); j++) {
-        m_primitiveCommandROS_.data[i].wrenchld[j] = msg->primitive_state[i].wrenchld[j];
-    }
-    m_primitiveCommandROS_.data[i].wrenchud.length(msg->primitive_state[i].wrenchud.size());
-    for(int j=0;j<m_primitiveCommandROS_.data[i].wrenchud.length(); j++) {
-        m_primitiveCommandROS_.data[i].wrenchud[j] = msg->primitive_state[i].wrenchud[j];
-    }
-    if(msg->primitive_state[i].M.size() == 6) {
-      for(int j=0;j<msg->primitive_state[i].M.size();j++) m_primitiveCommandROS_.data[i].M[j] = msg->primitive_state[i].M[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].M.size();j++) m_primitiveCommandROS_.data[i].M[j] = 0.0;
-    }
-    if(msg->primitive_state[i].D.size() == 6) {
-      for(int j=0;j<msg->primitive_state[i].D.size();j++) m_primitiveCommandROS_.data[i].D[j] = msg->primitive_state[i].D[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].D.size();j++) m_primitiveCommandROS_.data[i].D[j] = 0.0;
-    }
-    if(msg->primitive_state[i].K.size() == 6) {
-      for(int j=0;j<msg->primitive_state[i].K.size();j++) m_primitiveCommandROS_.data[i].K[j] = msg->primitive_state[i].K[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].K.size();j++) m_primitiveCommandROS_.data[i].K[j] = 0.0;
-    }
-    if(msg->primitive_state[i].act_wrench.size() == 6) {
-      for(int j=0;j<msg->primitive_state[i].act_wrench.size();j++) m_primitiveCommandROS_.data[i].actWrench[j] = msg->primitive_state[i].act_wrench[j];
-    }else{
-      for(int j=0;j<msg->primitive_state[i].act_wrench.size();j++) m_primitiveCommandROS_.data[i].actWrench[j] = 0.0;
-    }
-    m_primitiveCommandROS_.data[i].supportCOM = msg->primitive_state[i].support_com;
+    PrimitiveStateROSBridge::primitiveStateMsg2Idl(msg->primitive_state[i], m_primitiveCommandROS_.data[i], this->robot_vrml_, this->robot_urdf_);
   }
 
   m_primitiveCommandROSOut_.write();
+}
+
+void PrimitiveStateROSBridge::seqTopicCallback(const primitive_motion_level_msgs::PrimitiveStateArrayArray::ConstPtr& msg) {
+  coil::TimeValue coiltm(coil::gettimeofday());
+  m_primitiveCommandSeqROS_.tm.sec  = coiltm.sec();
+  m_primitiveCommandSeqROS_.tm.nsec = coiltm.usec() * 1000;
+  m_primitiveCommandSeqROS_.data.length(msg->primitive_states.size());
+  for(int i=0;i<msg->primitive_states.size();i++){
+    m_primitiveCommandSeqROS_.data[i].tm.sec = msg->primitive_states[i].header.stamp.sec;
+    m_primitiveCommandSeqROS_.data[i].tm.nsec = msg->primitive_states[i].header.stamp.nsec;
+    m_primitiveCommandSeqROS_.data[i].data.length(msg->primitive_states[i].primitive_state.size());
+    for(int j=0;j<msg->primitive_states[i].primitive_state.size();j++){
+      PrimitiveStateROSBridge::primitiveStateMsg2Idl(msg->primitive_states[i].primitive_state[j], m_primitiveCommandSeqROS_.data[i].data[j], this->robot_vrml_, this->robot_urdf_);
+    }
+  }
+  m_primitiveCommandSeqROSOut_.write();
+}
+
+void PrimitiveStateROSBridge::primitiveStateIdl2Msg(const primitive_motion_level_msgs::PrimitiveStateIdl& in, primitive_motion_level_msgs::PrimitiveState& out, const cnoid::BodyPtr& robot_vrml, const std::shared_ptr<urdf::Model>& robot_urdf) {
+  out.name = std::string(in.name);
+  if(std::string(in.parentLinkName) == "com") out.parent_link_name = "com";
+  else out.parent_link_name = VRMLToURDFLinkName(robot_vrml, robot_urdf, std::string(in.parentLinkName));
+  out.local_pose.position.x = in.localPose.position.x;
+  out.local_pose.position.y = in.localPose.position.y;
+  out.local_pose.position.z = in.localPose.position.z;
+  tf2::Quaternion quat;
+  quat.setRPY(in.localPose.orientation.r,
+              in.localPose.orientation.p,
+              in.localPose.orientation.y);
+  out.local_pose.orientation.x = quat.x();
+  out.local_pose.orientation.y = quat.y();
+  out.local_pose.orientation.z = quat.z();
+  out.local_pose.orientation.w = quat.w();
+  out.time = in.time;
+  out.pose.position.x = in.pose.position.x;
+  out.pose.position.y = in.pose.position.y;
+  out.pose.position.z = in.pose.position.z;
+  quat.setRPY(in.pose.orientation.r,
+              in.pose.orientation.p,
+              in.pose.orientation.y);
+  out.pose.orientation.x = quat.x();
+  out.pose.orientation.y = quat.y();
+  out.pose.orientation.z = quat.z();
+  out.pose.orientation.w = quat.w();
+  out.wrench.resize(6);
+  for(int j=0;j<6;j++) out.wrench[j] = in.wrench[j];
+  out.pose_follow_gain.resize(6);
+  for(int j=0;j<6;j++) out.pose_follow_gain[j] = in.poseFollowGain[j];
+  out.wrench_follow_gain.resize(6);
+  for(int j=0;j<6;j++) out.wrench_follow_gain[j] = in.wrenchFollowGain[j];
+  out.is_poseC_global = in.isPoseCGlobal;
+  out.poseC.resize(in.poseC.length()*6);
+  for(int j=0;j<in.poseC.length();j++){
+    for(int k=0;k<6;k++) out.poseC[j*6+k] = in.poseC[j][k];
+  }
+  out.poseld.resize(in.poseld.length());
+  for(int j=0;j<in.poseld.length();j++){
+    out.poseld[j] = in.poseld[j];
+  }
+  out.poseud.resize(in.poseud.length());
+  for(int j=0;j<in.poseud.length();j++){
+    out.poseud[j] = in.poseud[j];
+  }
+  out.is_wrenchC_global = in.isWrenchCGlobal;
+  out.wrenchC.resize(in.wrenchC.length()*6);
+  for(int j=0;j<in.wrenchC.length();j++){
+    for(int k=0;k<6;k++) out.wrenchC[j*6+k] = in.wrenchC[j][k];
+  }
+  out.wrenchld.resize(in.wrenchld.length());
+  for(int j=0;j<in.wrenchld.length();j++){
+    out.wrenchld[j] = in.wrenchld[j];
+  }
+  out.wrenchud.resize(in.wrenchud.length());
+  for(int j=0;j<in.wrenchud.length();j++){
+    out.wrenchud[j] = in.wrenchud[j];
+  }
+  out.M.resize(6);
+  for(int j=0;j<6;j++) out.M[j] = in.M[j];
+  out.D.resize(6);
+  for(int j=0;j<6;j++) out.D[j] = in.D[j];
+  out.K.resize(6);
+  for(int j=0;j<6;j++) out.K[j] = in.K[j];
+  out.act_wrench.resize(6);
+  for(int j=0;j<6;j++) out.act_wrench[j] = in.actWrench[j];
+  out.support_com = in.supportCOM;
+}
+
+void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level_msgs::PrimitiveState& in, primitive_motion_level_msgs::PrimitiveStateIdl& out, const cnoid::BodyPtr& robot_vrml, const std::shared_ptr<urdf::Model>& robot_urdf) {
+  out.name = in.name.c_str();
+  if(in.parent_link_name == "com") out.parentLinkName = "com";
+  else out.parentLinkName = URDFToVRMLLinkName(robot_vrml, robot_urdf, in.parent_link_name).c_str();
+  out.localPose.position.x = in.local_pose.position.x;
+  out.localPose.position.y = in.local_pose.position.y;
+  out.localPose.position.z = in.local_pose.position.z;
+  tf2::Quaternion quat(in.local_pose.orientation.x,in.local_pose.orientation.y,in.local_pose.orientation.z,in.local_pose.orientation.w);
+  tf2::Matrix3x3(quat).getRPY(out.localPose.orientation.r,out.localPose.orientation.p,out.localPose.orientation.y);
+  out.time = in.time;
+  out.pose.position.x = in.pose.position.x;
+  out.pose.position.y = in.pose.position.y;
+  out.pose.position.z = in.pose.position.z;
+  quat = tf2::Quaternion(in.pose.orientation.x,in.pose.orientation.y,in.pose.orientation.z,in.pose.orientation.w);
+  tf2::Matrix3x3(quat).getRPY(out.pose.orientation.r,out.pose.orientation.p,out.pose.orientation.y);
+  if(in.wrench.size() == 6){
+    for(int j=0;j<in.wrench.size();j++) out.wrench[j] = in.wrench[j];
+  }else{
+    for(int j=0;j<in.wrench.size();j++) out.wrench[j] = 0.0;
+  }
+  if(in.pose_follow_gain.size() == 6) {
+    for(int j=0;j<in.pose_follow_gain.size();j++) out.poseFollowGain[j] = in.pose_follow_gain[j];
+  }else{
+    for(int j=0;j<in.pose_follow_gain.size();j++) out.poseFollowGain[j] = 0.0;
+  }
+  if(in.wrench_follow_gain.size() == 6) {
+    for(int j=0;j<in.wrench_follow_gain.size();j++) out.wrenchFollowGain[j] = in.wrench_follow_gain[j];
+  }else{
+    for(int j=0;j<in.wrench_follow_gain.size();j++) out.wrenchFollowGain[j] = 0.0;
+  }
+  out.isPoseCGlobal = in.is_poseC_global;
+  if(in.poseC.size() % 6 == 0){
+    out.poseC.length(in.poseC.size() / 6);
+    for(int j=0;j<out.poseC.length(); j++) {
+      for(int k=0;k<6;k++){
+        out.poseC[j][k] = in.poseC[j*6+k];
+      }
+    }
+  }
+  out.poseld.length(in.poseld.size());
+  for(int j=0;j<out.poseld.length(); j++) {
+    out.poseld[j] = in.poseld[j];
+  }
+  out.poseud.length(in.poseud.size());
+  for(int j=0;j<out.poseud.length(); j++) {
+    out.poseud[j] = in.poseud[j];
+  }
+  out.isWrenchCGlobal = in.is_wrenchC_global;
+  if(in.wrenchC.size() % 6 == 0){
+    out.wrenchC.length(in.wrenchC.size() / 6);
+    for(int j=0;j<out.wrenchC.length(); j++) {
+      for(int k=0;k<6;k++){
+        out.wrenchC[j][k] = in.wrenchC[j*6+k];
+      }
+    }
+  }
+  out.wrenchld.length(in.wrenchld.size());
+  for(int j=0;j<out.wrenchld.length(); j++) {
+    out.wrenchld[j] = in.wrenchld[j];
+  }
+  out.wrenchud.length(in.wrenchud.size());
+  for(int j=0;j<out.wrenchud.length(); j++) {
+    out.wrenchud[j] = in.wrenchud[j];
+  }
+  if(in.M.size() == 6) {
+    for(int j=0;j<in.M.size();j++) out.M[j] = in.M[j];
+  }else{
+    for(int j=0;j<in.M.size();j++) out.M[j] = 0.0;
+  }
+  if(in.D.size() == 6) {
+    for(int j=0;j<in.D.size();j++) out.D[j] = in.D[j];
+  }else{
+    for(int j=0;j<in.D.size();j++) out.D[j] = 0.0;
+  }
+  if(in.K.size() == 6) {
+    for(int j=0;j<in.K.size();j++) out.K[j] = in.K[j];
+  }else{
+    for(int j=0;j<in.K.size();j++) out.K[j] = 0.0;
+  }
+  if(in.act_wrench.size() == 6) {
+    for(int j=0;j<in.act_wrench.size();j++) out.actWrench[j] = in.act_wrench[j];
+  }else{
+    for(int j=0;j<in.act_wrench.size();j++) out.actWrench[j] = 0.0;
+  }
+  out.supportCOM = in.support_com;
 }
 
 static const char* PrimitiveStateROSBridge_spec[] = {

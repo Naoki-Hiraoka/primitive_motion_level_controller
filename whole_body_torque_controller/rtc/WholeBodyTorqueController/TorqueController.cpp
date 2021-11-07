@@ -21,7 +21,7 @@ namespace WholeBodyTorque {
       return;
     }
 
-    PrimitiveTask::calcPositionConstraint(robot_act, this->primitiveCommand_, this->positionConstraint_);
+    PrimitiveTask::calcPositionConstraint(robot_act, this->primitiveCommand_, dt, this->positionConstraint_);
     this->positionConstraint_->debuglevel() = debugLevel;
     this->positionConstraint_->checkConvergence();
     cnoid::Vector6 error = this->positionConstraint_->calc_error(); // actual - reference. world系
@@ -67,6 +67,7 @@ namespace WholeBodyTorque {
 
   void TorqueController::PrimitiveTask::calcPositionConstraint(const cnoid::BodyPtr& robot,
                                                                const std::shared_ptr<const primitive_motion_level_tools::PrimitiveState>& primitiveCommand,
+                                                               double dt,
                                                                std::shared_ptr<IK::PositionConstraint>& positionConstraint){
     if(!robot->link(primitiveCommand->parentLinkName())){
       std::cerr << "link " << primitiveCommand->parentLinkName() << " not exist" << std::endl;
@@ -78,7 +79,7 @@ namespace WholeBodyTorque {
     positionConstraint->A_localpos() = primitiveCommand->localPose();
     positionConstraint->B_link() = nullptr;
     positionConstraint->B_localpos() = primitiveCommand->targetPose();
-    positionConstraint->maxError() << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
+    positionConstraint->maxError() << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1; // 小さいほうが安定するが、相対的にD項が大きくなることに注意
     positionConstraint->weight() << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
     positionConstraint->eval_link() = nullptr;
     positionConstraint->eval_localR() = positionConstraint->B_localpos().linear();

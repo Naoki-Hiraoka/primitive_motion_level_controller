@@ -292,17 +292,21 @@ if __name__ == "__main__":
     s = rospy.Service('~activate', SetBool, handle_activate)
 
     r = rospy.Rate(20)
-    while not rospy.is_shutdown():
-        if is_active:
-            msg = PrimitiveStateArray()
-            for end_effector in end_effectors:
-                msg.primitive_state.append(end_effector.getState())
-            pub.publish(msg)
-            msg = PrimitiveStateArrayArray()
-            primitive_states = PrimitiveStateArray()
-            primitive_states.header.stamp = rospy.Time(preview_time)
-            for end_effector in end_effectors:
-                primitive_states.primitive_state.append(end_effector.getPreviewState())
-            msg.primitive_states.append(primitive_states)
-            previewPub.publish(msg)
-        r.sleep()
+    try:
+        while not rospy.is_shutdown():
+            if is_active:
+                msg = PrimitiveStateArray()
+                for end_effector in end_effectors:
+                    msg.primitive_state.append(end_effector.getState())
+                pub.publish(msg)
+                msg = PrimitiveStateArrayArray()
+                primitive_states = PrimitiveStateArray()
+                primitive_states.header.stamp = rospy.Time(preview_time)
+                for end_effector in end_effectors:
+                    primitive_states.primitive_state.append(end_effector.getPreviewState())
+                msg.primitive_states.append(primitive_states)
+                previewPub.publish(msg)
+            r.sleep()
+    except rospy.ROSInterruptException:
+        rospy.signal_shutdown('finish')
+        rospy.spin()

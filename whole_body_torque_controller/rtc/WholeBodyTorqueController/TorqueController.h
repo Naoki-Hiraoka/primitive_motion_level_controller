@@ -36,6 +36,7 @@ namespace WholeBodyTorque {
     protected:
       static void calcPositionConstraint(const cnoid::BodyPtr& robot,
                                          const std::shared_ptr<const primitive_motion_level_tools::PrimitiveState>& primitiveCommand,
+                                         double dt,
                                          std::shared_ptr<IK::PositionConstraint>& positionConstraint);
 
       std::string name_;

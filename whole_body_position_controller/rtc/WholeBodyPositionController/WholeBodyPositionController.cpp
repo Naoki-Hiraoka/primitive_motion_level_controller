@@ -72,12 +72,15 @@ RTC::ReturnCode_t WholeBodyPositionController::onInitialize(){
     if(this->m_robot_ref_->joint(i)->q_upper() - this->m_robot_ref_->joint(i)->q_lower() > 0.002){
       this->m_robot_com_->joint(i)->setJointRange(this->m_robot_ref_->joint(i)->q_lower()+0.001,this->m_robot_ref_->joint(i)->q_upper()-0.001);
     }
-    // 1.0だと安全.4.0は脚.10.0はlapid manipulation らしい
-    this->m_robot_com_->joint(i)->setJointVelocityRange(std::max(this->m_robot_ref_->joint(i)->dq_lower(), -1.0),
-                                                        std::min(this->m_robot_ref_->joint(i)->dq_upper(), 1.0));
+    // apply margin
+    // 1.0だと安全.4.0は脚.10.0はlapid manipulation らしい. limitを小さくしすぎた状態で、速い指令を送ると、狭いlimitの中で高優先度タスクを頑張って満たそうとすることで、低優先度タスクを満たす余裕がなくエラーが大きくなってしまうことに注意.
+    if(this->m_robot_ref_->joint(i)->dq_upper() - this->m_robot_ref_->joint(i)->dq_lower() > 0.02){
+      this->m_robot_com_->joint(i)->setJointVelocityRange(std::max(this->m_robot_ref_->joint(i)->dq_lower()+0.1, -10.0),
+                                                          std::min(this->m_robot_ref_->joint(i)->dq_upper()-0.1, 10.0));
+    }
   }
-  this->m_robot_com_->rootLink()->setJointVelocityRange(std::max(this->m_robot_ref_->rootLink()->dq_lower(), -1.0),
-                                                        std::min(this->m_robot_ref_->rootLink()->dq_upper(), 1.0));
+  this->m_robot_com_->rootLink()->setJointVelocityRange(std::max(this->m_robot_ref_->rootLink()->dq_lower()+0.1, -10.0),
+                                                        std::min(this->m_robot_ref_->rootLink()->dq_upper()-0.1, 10.0));
 
   std::string jointLimitTableStr;
   if(this->getProperties().hasKey("joint_limit_table")) jointLimitTableStr = std::string(this->getProperties()["joint_limit_table"]);

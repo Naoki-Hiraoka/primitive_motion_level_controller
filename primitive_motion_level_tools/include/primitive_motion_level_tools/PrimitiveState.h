@@ -37,6 +37,12 @@ namespace primitive_motion_level_tools {
     const cnoid::Vector6& K() const { return K_;}
     const cnoid::Vector6& actWrench() const { return actWrench_;}
     const bool& supportCOM() const { return supportCOM_; }
+    bool setInterpolationMode (cpp_filters::interpolation_mode i_mode){
+      return
+        targetPositionInterpolator_.setInterpolationMode(i_mode) &&
+        targetOrientationInterpolator_.setInterpolationMode(i_mode) &&
+        targetWrenchInterpolator_.setInterpolationMode(i_mode);
+    }
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   protected:
     std::string name_;

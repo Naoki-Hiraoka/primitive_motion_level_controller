@@ -178,7 +178,7 @@ namespace WholeBodyPosition {
       if(jointAngleConstraint.find(robot_com->joint(i))==jointAngleConstraint.end()){
         std::shared_ptr<IK::JointAngleConstraint> jac = std::make_shared<IK::JointAngleConstraint>();
         jac->joint() = robot_com->joint(i);
-        jac->maxError() = 1.0 * dt; // primitive motion level の10分の1以下にしないと優先度逆転する
+        jac->maxError() = 10.0 * dt; // primitive motion level のmaxError以下にしないと優先度逆転するおそれ
         jac->weight() = weight;
         jointAngleConstraint[robot_com->joint(i)] = jac;
       }
@@ -384,7 +384,7 @@ namespace WholeBodyPosition {
 
     // 関節角速度上下限を取得
     std::vector<std::shared_ptr<IK::IKConstraint> > jointVelocityConstraint;
-    PositionController::getJointVelocityIKConstraints(this->jointVelocityConstraint_, jointVelocityConstraint, robot_com, dt);
+    PositionController::getJointVelocityIKConstraints(this->jointVelocityConstraint_, jointVelocityConstraint, robot_com, dt, 10.0); // 小さい値になるので、qp終了判定のtoleranceによる誤差の影響が大きい. weight上げて大きい値にscaleする
 
     // 関節角度上下限を取得
     std::vector<std::shared_ptr<IK::IKConstraint> > limitConstraint;
@@ -394,11 +394,11 @@ namespace WholeBodyPosition {
     PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, limitConstraint, robot_com, dt, comVelocityLimit);
 
     // 自己干渉上下限を取得
-    PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 1.0, 10.0); //weightはweを増やしている
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 1.0, 0.3/dt); // 急激に動作方向が変化する恐れがあるので、velocitydamperをつける
 
     std::vector<std::shared_ptr<IK::IKConstraint> > softLimitConstraint;
     // 環境干渉上下限を取得
-    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softLimitConstraint, robot_com, envCollisions, dt, 0.04, 1.0/dt, 10.0); //weightはweを増やしている. ビジョンのノイズを受けるので、velocitydamperをつける
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, softLimitConstraint, robot_com, envCollisions, dt, 0.04, 1.0/dt); // ビジョンのノイズを受けるので、velocitydamperをつける
 
     // 重みにより優先度をつけて同時に解くことが可能なのは、目標位置が重要なタスクで、エラーに同じくらいの大きさで頭打ちをしている場合. 一回の周期での変位は必ずしも優先度通りでは無いが、全体としては優先度をつけて目標位置に収束する. 逆に、一回の周期での変位が重要なタスクは不可. すなわち関節角速度制約や目標角運動量, velocityDamperは不可.
     // 高優先度タスクが満たされていない場合、weが大きくなるので、低優先度タスクが必要以上に収束が遅くなる. 高優先度タスクの目標位置を速く動かすと、低優先度タスクが一時的に満たされなくなることが発生する. weightの大きさの差は数十倍までが限度ではないか
@@ -407,14 +407,14 @@ namespace WholeBodyPosition {
 
     // primitive motion levelのIKConstraintを取得
     for(std::map<std::string, std::shared_ptr<PositionController::PositionTask> >::const_iterator it = positionTaskMap.begin(); it != positionTaskMap.end(); it++) {
-      it->second->getIKConstraintsforSupportEEF(softConstraint, robot_com, dt, 18.0);
-      it->second->getIKConstraintsforCOM(softConstraint, robot_com, dt, 2.0);//weightはweを増やしている
-      it->second->getIKConstraintsforCOMRegion(softConstraint, robot_com, dt, 18.0);//weightはweを増やしている
-      it->second->getIKConstraintsforInteractEEF(softConstraint, robot_com, dt, 6.0);//weightはweを増やしている
+      it->second->getIKConstraintsforSupportEEF(softConstraint, robot_com, dt, 9.0);
+      it->second->getIKConstraintsforCOM(softConstraint, robot_com, dt, 1.0);
+      it->second->getIKConstraintsforCOMRegion(softConstraint, robot_com, dt, 9.0);
+      it->second->getIKConstraintsforInteractEEF(softConstraint, robot_com, dt, 3.0);
     }
 
     // command levelのIKConstraintを取得
-    PositionController::getCommandLevelIKConstraints(robot_ref, this->jointAngleConstraint_, this->rootLinkConstraint_, softConstraint, robot_com, dt, followRootLink, 0.5);
+    PositionController::getCommandLevelIKConstraints(robot_ref, this->jointAngleConstraint_, this->rootLinkConstraint_, softConstraint, robot_com, dt, followRootLink, 0.1); // 小さい値すぎると、qp終了判定のtoleranceによって無視されてしまう
 
     std::vector<std::vector<std::shared_ptr<IK::IKConstraint> > > ikConstraint;
     ikConstraint.push_back(jointVelocityConstraint);
@@ -441,10 +441,10 @@ namespace WholeBodyPosition {
                                                          taskOSQP->solver().settings()->setMaxIteration(500);
                                                          taskOSQP->solver().settings()->setCheckTermination(10);//すぐに収束するなら、小さいほうが速い
                                                          taskOSQP->solver().settings()->setLinearSystemSolver(0);//1:MKT. https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.htmlからのインストールと、source /opt/intel/oneapi/mkl/latest/env/vars.sh必要. intel / amdのPCでそれぞれ試したが、MKTを使ってもそんなに速くならなかった.
-                                                         taskOSQP->solver().settings()->setAbsoluteTolerance(1e-2);// 大きい方が速いが，不正確
-                                                         taskOSQP->solver().settings()->setRelativeTolerance(1e-2);// 大きい方が速いが，不正確
-                                                         taskOSQP->solver().settings()->setPrimalInfeasibilityTollerance(1e-2);// 大きい方が速いが，不正確
-                                                         taskOSQP->solver().settings()->setDualInfeasibilityTollerance(1e-2);// 大きい方が速いが，不正確
+                                                         taskOSQP->solver().settings()->setAbsoluteTolerance(1e-3);// 大きい方が速いが，不正確
+                                                         taskOSQP->solver().settings()->setRelativeTolerance(1e-3);// 大きい方が速いが，不正確
+                                                         taskOSQP->solver().settings()->setPrimalInfeasibilityTollerance(1e-4);// 大きい方が速いが，不正確
+                                                         taskOSQP->solver().settings()->setDualInfeasibilityTollerance(1e-4);// 大きい方が速いが，不正確
                                                          taskOSQP->solver().settings()->setRho(1e2);// 大きい方が速いが，不正確
                                                          taskOSQP->solver().settings()->setScaledTerimination(true);// avoid too severe termination check
                                                        }

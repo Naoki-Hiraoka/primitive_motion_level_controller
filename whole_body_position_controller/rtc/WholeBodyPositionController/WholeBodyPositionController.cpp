@@ -373,6 +373,7 @@ bool WholeBodyPositionController::setParams(const whole_body_position_controller
   }
   this->positionController_.followRootLink() = i_param.followRootLink;
   this->positionController_.comVelocityLimit() = i_param.comVelocityLimit;
+  this->positionController_.angularMomentumLimit() = i_param.angularMomentumLimit;
   return true;
 }
 
@@ -395,6 +396,7 @@ bool WholeBodyPositionController::getParams(whole_body_position_controller::Whol
   }
   i_param.followRootLink = this->positionController_.followRootLink();
   i_param.comVelocityLimit = this->positionController_.comVelocityLimit();
+  i_param.angularMomentumLimit = this->positionController_.angularMomentumLimit();
   return true;
 }
 

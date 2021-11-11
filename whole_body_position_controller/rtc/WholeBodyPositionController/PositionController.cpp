@@ -204,21 +204,21 @@ namespace WholeBodyPosition {
 
   void PositionController::getJointLimitIKConstraints(std::unordered_map<cnoid::LinkPtr,std::shared_ptr<ik_constraint_joint_limit_table::JointLimitMinMaxTableConstraint> >& jointLimitConstraintMap,
                                                       std::vector<std::shared_ptr<IK::IKConstraint> >& jointLimitIKConstraints,
-                                                      const cnoid::BodyPtr& robot_com,
+                                                      const std::vector<cnoid::LinkPtr>& useJoints,
                                                       std::unordered_map<cnoid::LinkPtr, std::vector<std::shared_ptr<joint_limit_table::JointLimitTable> > >& jointLimitTablesMap,
                                                       double dt,
                                                       double weight){
-    for(size_t i=0;i<robot_com->numJoints();i++){
-      if(jointLimitConstraintMap.find(robot_com->joint(i))==jointLimitConstraintMap.end()){
+    for(size_t i=0;i<useJoints.size();i++){
+      if(jointLimitConstraintMap.find(useJoints[i])==jointLimitConstraintMap.end()){
         std::shared_ptr<ik_constraint_joint_limit_table::JointLimitMinMaxTableConstraint> jac = std::make_shared<ik_constraint_joint_limit_table::JointLimitMinMaxTableConstraint>();
-        jac->joint() = robot_com->joint(i);
+        jac->joint() = useJoints[i];
         jac->maxError() = 1.0*dt;
         jac->weight() = weight;
-        jointLimitConstraintMap[robot_com->joint(i)] = jac;
+        jointLimitConstraintMap[useJoints[i]] = jac;
       }
-      std::shared_ptr<ik_constraint_joint_limit_table::JointLimitMinMaxTableConstraint>& jac = jointLimitConstraintMap[robot_com->joint(i)];
-      if(jointLimitTablesMap.find(robot_com->joint(i)) != jointLimitTablesMap.end()){
-        jac->jointLimitTables() = jointLimitTablesMap[robot_com->joint(i)];
+      std::shared_ptr<ik_constraint_joint_limit_table::JointLimitMinMaxTableConstraint>& jac = jointLimitConstraintMap[useJoints[i]];
+      if(jointLimitTablesMap.find(useJoints[i]) != jointLimitTablesMap.end()){
+        jac->jointLimitTables() = jointLimitTablesMap[useJoints[i]];
       }else{
         jac->jointLimitTables().clear();
       }
@@ -226,28 +226,16 @@ namespace WholeBodyPosition {
     }
   }
 
-  void PositionController::getJointVelocityIKConstraints(std::unordered_map<cnoid::LinkPtr,std::shared_ptr<IK::JointVelocityConstraint> >& jointVelocityConstraintMap, std::vector<std::shared_ptr<IK::IKConstraint> >& jointVelocityIKConstraints, const cnoid::BodyPtr& robot_com, double dt, double weight){
-    for(size_t i=0;i<robot_com->numJoints();i++){
-      if(jointVelocityConstraintMap.find(robot_com->joint(i))==jointVelocityConstraintMap.end()){
+  void PositionController::getJointVelocityIKConstraints(std::unordered_map<cnoid::LinkPtr,std::shared_ptr<IK::JointVelocityConstraint> >& jointVelocityConstraintMap, std::vector<std::shared_ptr<IK::IKConstraint> >& jointVelocityIKConstraints, const std::vector<cnoid::LinkPtr>& useJoints, double dt, double weight){
+    for(size_t i=0;i<useJoints.size();i++){
+      if(jointVelocityConstraintMap.find(useJoints[i])==jointVelocityConstraintMap.end()){
         std::shared_ptr<IK::JointVelocityConstraint> jac = std::make_shared<IK::JointVelocityConstraint>();
-        jac->joint() = robot_com->joint(i);
+        jac->joint() = useJoints[i];
         jac->maxError() = 0.1;
         jac->weight() = weight;
-        jointVelocityConstraintMap[robot_com->joint(i)] = jac;
+        jointVelocityConstraintMap[useJoints[i]] = jac;
       }
-      std::shared_ptr<IK::JointVelocityConstraint>& jac = jointVelocityConstraintMap[robot_com->joint(i)];
-      jac->dt() = dt;
-      jointVelocityIKConstraints.push_back(jac);
-    }
-    if(robot_com->rootLink()->jointType() != cnoid::Link::FIXED_JOINT){
-      if(jointVelocityConstraintMap.find(robot_com->rootLink())==jointVelocityConstraintMap.end()){
-        std::shared_ptr<IK::JointVelocityConstraint> jac = std::make_shared<IK::JointVelocityConstraint>();
-        jac->joint() = robot_com->rootLink();
-        jac->maxError() = 0.1;
-        jac->weight() = weight;
-        jointVelocityConstraintMap[robot_com->rootLink()] = jac;
-      }
-      std::shared_ptr<IK::JointVelocityConstraint>& jac = jointVelocityConstraintMap[robot_com->rootLink()];
+      std::shared_ptr<IK::JointVelocityConstraint>& jac = jointVelocityConstraintMap[useJoints[i]];
       jac->dt() = dt;
       jointVelocityIKConstraints.push_back(jac);
     }
@@ -267,6 +255,22 @@ namespace WholeBodyPosition {
     cOMVelocityConstraint->dt() = dt;
 
     iKConstraints.push_back(cOMVelocityConstraint);
+  }
+
+  void PositionController::getAngularMomentumIKConstraints(std::shared_ptr<IK::AngularMomentumConstraint> angularMomentumConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double angularMomentumLimit, double weight){
+    if(angularMomentumLimit<=0.0) return;
+
+    if(!angularMomentumConstraint) angularMomentumConstraint = std::make_shared<IK::AngularMomentumConstraint>();
+
+    angularMomentumConstraint->robot() = robot_com;
+    angularMomentumConstraint->maxAngularMomentum() = cnoid::Vector3::Ones() * angularMomentumLimit;
+    angularMomentumConstraint->minAngularMomentum() = - cnoid::Vector3::Ones() * angularMomentumLimit;
+    angularMomentumConstraint->maxError() << 1.0*dt, 1.0*dt, 1.0*dt;
+    angularMomentumConstraint->precision() << 1e-4, 1e-4, 1e-4;
+    angularMomentumConstraint->weight() = cnoid::Vector3::Ones()*weight;
+    angularMomentumConstraint->dt() = dt;
+
+    iKConstraints.push_back(angularMomentumConstraint);
   }
 
   void PositionController::getCollisionIKConstraints(std::vector<std::shared_ptr<IK::ClientCollisionConstraint> >& collisionConstraints, std::vector<std::shared_ptr<IK::IKConstraint> >& collisionIKConstraints, const cnoid::BodyPtr& robot_com, const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, double dt, double margin,  double velocityDamper, double weight){
@@ -315,7 +319,18 @@ namespace WholeBodyPosition {
       break;
     case MODE_PRIORITIZED:
     default:
-      this->prioritizedIKSolver_.solvePrioritizedIK(robot_com, robot_ref, this->positionTaskMap_, jointLimitTablesMap, selfCollisions, envCollisions, useJoints, dt, this->followRootLink_, this->comVelocityLimit_, debugLevel);
+      this->prioritizedIKSolver_.solvePrioritizedIK(robot_com,
+                                                    robot_ref,
+                                                    this->positionTaskMap_,
+                                                    jointLimitTablesMap,
+                                                    selfCollisions,
+                                                    envCollisions,
+                                                    useJoints,
+                                                    dt,
+                                                    this->followRootLink_,
+                                                    this->comVelocityLimit_,
+                                                    this->angularMomentumLimit_,
+                                                    debugLevel);
       break;
     }
 
@@ -380,18 +395,20 @@ namespace WholeBodyPosition {
                                                                    double dt,
                                                                    bool followRootLink,
                                                                    double comVelocityLimit,
+                                                                   double angularMomentumLimit,
                                                                    int debugLevel){
 
     // 関節角速度上下限を取得
     std::vector<std::shared_ptr<IK::IKConstraint> > jointVelocityConstraint;
-    PositionController::getJointVelocityIKConstraints(this->jointVelocityConstraint_, jointVelocityConstraint, robot_com, dt, 10.0); // 小さい値になるので、qp終了判定のtoleranceによる誤差の影響が大きい. weight上げて大きい値にscaleする
+    PositionController::getJointVelocityIKConstraints(this->jointVelocityConstraint_, jointVelocityConstraint, useJoints, dt, 10.0); // 小さい値になるので、qp終了判定のtoleranceによる誤差の影響が大きい. weight上げて大きい値にscaleする
+
+    // 重心速度上下限を取得
+    PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, jointVelocityConstraint, robot_com, dt, comVelocityLimit);
+    PositionController::getAngularMomentumIKConstraints(this->angularMomentumConstraint_, jointVelocityConstraint, robot_com, dt, angularMomentumLimit);
 
     // 関節角度上下限を取得
     std::vector<std::shared_ptr<IK::IKConstraint> > limitConstraint;
-    PositionController::getJointLimitIKConstraints(this->jointLimitConstraint_, limitConstraint, robot_com, jointLimitTablesMap, dt);
-
-    // 重心速度上下限を取得
-    PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, limitConstraint, robot_com, dt, comVelocityLimit);
+    PositionController::getJointLimitIKConstraints(this->jointLimitConstraint_, limitConstraint, useJoints, jointLimitTablesMap, dt);
 
     // 自己干渉上下限を取得
     PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 1.0, 0.3/dt); // 急激に動作方向が変化する恐れがあるので、velocitydamperをつける

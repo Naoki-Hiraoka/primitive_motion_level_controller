@@ -37,6 +37,7 @@ from interactive_markers.menu_handler import MenuHandler
 import tf
 from tf import TransformListener, transformations
 from primitive_motion_level_msgs.msg import PrimitiveState, PrimitiveStateArray, PrimitiveStateArrayArray
+from primitive_motion_level_tools.primitive_state import updatePrimitiveStateFromParam
 from geometry_msgs.msg import Pose
 from std_srvs.srv import SetBool, SetBoolResponse
 
@@ -56,72 +57,8 @@ class EndEffector:
         self.menu_handler = MenuHandler()
 
         self.state = PrimitiveState()
-        self.state.name = param["name"]
-        if self.state.name != "com":
-            self.state.parent_link_name = param["parent_link_name"]
-        else:
-            self.state.parent_link_name = "com"
-        if "local_pose" in param:
-            self.state.local_pose.position.x = param["local_pose"][0]
-            self.state.local_pose.position.y = param["local_pose"][1]
-            self.state.local_pose.position.z = param["local_pose"][2]
-            self.state.local_pose.orientation.x = param["local_pose"][3]
-            self.state.local_pose.orientation.y = param["local_pose"][4]
-            self.state.local_pose.orientation.z = param["local_pose"][5]
-            self.state.local_pose.orientation.w = param["local_pose"][6]
-        else:
-            self.state.local_pose.position.x = 0.0
-            self.state.local_pose.position.y = 0.0
-            self.state.local_pose.position.z = 0.0
-            self.state.local_pose.orientation.x = 0.0
-            self.state.local_pose.orientation.y = 0.0
-            self.state.local_pose.orientation.z = 0.0
-            self.state.local_pose.orientation.w = 1.0
-        if "support_com" in param:
-            self.state.support_com = param["support_com"]
-        else:
-            self.state.support_com = False
+        updatePrimitiveStateFromParam(self.state,param)
         self.preview_support_com = copy.deepcopy(self.state.support_com)
-        if "time" in param:
-            self.state.time = param["time"]
-        else:
-            self.state.time = 0.1
-        if "is_wrenchC_global" in param:
-            self.state.is_wrenchC_global = param["is_wrenchC_global"]
-        else:
-            self.state.is_wrenchC_global = False
-        if "wrenchC" in param:
-            self.state.wrenchC = map(lambda x: float(x), param["wrenchC"])
-        else:
-            self.state.wrenchC = []
-        if "wrenchld" in param:
-            self.state.wrenchld = map(lambda x: float(x), param["wrenchld"])
-        else:
-            self.state.wrenchld = []
-        if "wrenchud" in param:
-            self.state.wrenchud = map(lambda x: float(x), param["wrenchud"])
-        else:
-            self.state.wrenchud = []
-        if "pose_follow_gain" in param:
-            self.state.pose_follow_gain = param["pose_follow_gain"]
-        else:
-            self.state.pose_follow_gain = [1.0]*6
-        if "wrench_follow_gain" in param:
-            self.state.wrench_follow_gain = param["wrench_follow_gain"]
-        else:
-            self.state.wrench_follow_gain = [0.0]*6
-        if "M" in param:
-            self.state.M = map(lambda x: float(x), param["M"])
-        else:
-            self.state.M = [10.0, 10.0, 10.0, 5.0, 5.0, 5.0]
-        if "D" in param:
-            self.state.D = map(lambda x: float(x), param["D"])
-        else:
-            self.state.D = [200.0, 200.0, 200.0, 100.0, 100.0, 100.0]
-        if "K" in param:
-            self.state.K = map(lambda x: float(x), param["K"])
-        else:
-            self.state.K = [400.0, 400.0, 400.0, 200.0, 200.0, 200.0]
 
         self.int_marker = InteractiveMarker()
         self.int_marker.name = self.state.name

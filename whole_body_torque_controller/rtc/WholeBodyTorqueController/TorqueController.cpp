@@ -82,7 +82,7 @@ namespace WholeBodyTorque {
     positionConstraint->maxError() << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1; // 小さいほうが安定するが、相対的にD項が大きくなることに注意
     positionConstraint->weight() << 1.0, 1.0, 1.0, 1.0, 1.0, 1.0;
     positionConstraint->eval_link() = nullptr;
-    positionConstraint->eval_localR() = positionConstraint->B_localpos().linear();
+    positionConstraint->eval_localR() = cnoid::Matrix3::Identity(); //world系
   }
 
   void TorqueController::reset() {

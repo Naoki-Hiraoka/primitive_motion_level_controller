@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   )
 find_package(choreonoid REQUIRED)
 
+catkin_python_setup()
+
 # initialize rtmbuild (generate_messages is called)
 rtmbuild_init()
 

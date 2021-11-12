@@ -112,6 +112,83 @@ namespace primitive_motion_level_tools {
 
   }
 
+  void PrimitiveState::updateFromMsg(const primitive_motion_level_msgs::PrimitiveState& msg) {
+    this->name_ = msg.name;
+    this->parentLinkName_ = msg.parent_link_name;
+    this->localPose_.translation()[0] = msg.local_pose.position.x;
+    this->localPose_.translation()[1] = msg.local_pose.position.y;
+    this->localPose_.translation()[2] = msg.local_pose.position.z;
+    this->localPose_.linear() = cnoid::Matrix3(cnoid::Quaternion(msg.local_pose.orientation.w,msg.local_pose.orientation.x,msg.local_pose.orientation.y,msg.local_pose.orientation.z));
+    this->time_ = msg.time;
+    cnoid::Position pose;
+    pose.translation()[0] = msg.pose.position.x;
+    pose.translation()[1] = msg.pose.position.y;
+    pose.translation()[2] = msg.pose.position.z;
+    pose.linear() = cnoid::Matrix3(cnoid::Quaternion(msg.pose.orientation.w,msg.pose.orientation.x,msg.pose.orientation.y,msg.pose.orientation.z));
+    this->targetPoseRaw_ = pose;
+    if(!this->isInitial_ && msg.time > 0.0){
+      this->targetPositionInterpolator_.setGoal(pose.translation(),msg.time);
+      this->targetOrientationInterpolator_.setGoal(pose.linear(),msg.time);
+    }else{
+      this->targetPositionInterpolator_.reset(pose.translation());
+      this->targetOrientationInterpolator_.reset(pose.linear());
+    }
+    if(msg.wrench.size() == 6){
+      cnoid::Vector6 wrench; for(size_t i=0;i<6;i++) wrench[i] = msg.wrench[i];
+      this->targetWrenchRaw_ = wrench;
+      if(!this->isInitial_ && msg.time > 0.0){
+        this->targetWrenchInterpolator_.setGoal(wrench,msg.time);
+      }else{
+        this->targetWrenchInterpolator_.reset(wrench);
+      }
+    }
+    if(msg.pose_follow_gain.size()==6) for(size_t i=0;i<6;i++) this->poseFollowGain_[i] = msg.pose_follow_gain[i];
+    if(msg.wrench_follow_gain.size()==6) for(size_t i=0;i<6;i++) this->wrenchFollowGain_[i] = msg.wrench_follow_gain[i];
+    this->isPoseCGlobal_ = msg.is_poseC_global;
+    if(msg.poseC.size() %6 == 0){
+      this->poseC_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(msg.poseC.size()/6,6);
+      for(size_t i=0;i<msg.poseC.size()/6;i++)
+        for(size_t j=0;j<6;j++)
+          if(msg.poseC[i*6+j]!=0) this->poseC_.insert(i,j) = msg.poseC[i*6+j];
+    }
+    this->poseld_.resize(msg.poseld.size());
+    for(size_t i=0;i<msg.poseld.size();i++) this->poseld_[i] = msg.poseld[i];
+    this->poseud_.resize(msg.poseud.size());
+    for(size_t i=0;i<msg.poseud.size();i++) this->poseud_[i] = msg.poseud[i];
+    if(this->poseC_.rows() != this->poseld_.rows() ||
+       this->poseld_.rows() != this->poseud_.rows()){
+      std::cerr << "\x1b[31m[PrimitiveState::updateFromIdl] " << "dimension mismatch" << "\x1b[39m" << std::endl;
+      this->poseC_.resize(0,6);
+      this->poseld_.resize(0);
+      this->poseud_.resize(0);
+    }
+    this->isWrenchCGlobal_ = msg.is_wrenchC_global;
+    if(msg.wrenchC.size() % 6 == 0){
+      this->wrenchC_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(msg.wrenchC.size()/6,6);
+      for(size_t i=0;i<msg.wrenchC.size()/6;i++)
+        for(size_t j=0;j<6;j++)
+          if(msg.wrenchC[i*6+j]!=0) this->wrenchC_.insert(i,j) = msg.wrenchC[i*6+j];
+    }
+    this->wrenchld_.resize(msg.wrenchld.size());
+    for(size_t i=0;i<msg.wrenchld.size();i++) this->wrenchld_[i] = msg.wrenchld[i];
+    this->wrenchud_.resize(msg.wrenchud.size());
+    for(size_t i=0;i<msg.wrenchud.size();i++) this->wrenchud_[i] = msg.wrenchud[i];
+    if(this->wrenchC_.rows() != this->wrenchld_.rows() ||
+       this->wrenchld_.rows() != this->wrenchud_.rows()){
+      std::cerr << "\x1b[31m[PrimitiveCommand::updateFromIdl] " << "dimension mismatch" << "\x1b[39m" << std::endl;
+      this->wrenchC_.resize(0,6);
+      this->wrenchld_.resize(0);
+      this->wrenchud_.resize(0);
+    }
+    if(msg.M.size()==6) for(size_t i=0;i<6;i++) this->M_[i] = msg.M[i];
+    if(msg.D.size()==6) for(size_t i=0;i<6;i++) this->D_[i] = msg.D[i];
+    if(msg.K.size()==6) for(size_t i=0;i<6;i++) this->K_[i] = msg.K[i];
+    if(msg.act_wrench.size()==6) for(size_t i=0;i<6;i++) this->actWrench_[i] = msg.act_wrench[i];
+    this->supportCOM_ = msg.support_com;
+
+    this->isInitial_ = false;
+  }
+
   void PrimitiveState::updateTargetForOneStep(double dt) {
     this->targetPosePrevPrev_ = this->targetPosePrev_;
     this->targetPosePrev_ = this->targetPose_;
@@ -150,6 +227,32 @@ namespace primitive_motion_level_tools {
     }
   }
 
+  void PrimitiveStates::updateFromMsg(const primitive_motion_level_msgs::PrimitiveStateArray& msg){
+    this->time_ = msg.header.stamp.sec + msg.header.stamp.nsec * 0.000000001;
+
+    // 消滅したEndEffectorを削除
+    for(std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >::iterator it = this->primitiveState_.begin(); it != this->primitiveState_.end(); ) {
+      bool found = false;
+      for(size_t i=0;i<msg.primitive_state.size();i++) {
+        if(msg.primitive_state[i].name==it->first) found = true;
+      }
+      if (!found) it = this->primitiveState_.erase(it);
+      else ++it;
+    }
+    // 増加したEndEffectorの反映
+    for(size_t i=0;i<msg.primitive_state.size();i++){
+      if(this->primitiveState_.find(msg.primitive_state[i].name)==this->primitiveState_.end()){
+        this->primitiveState_[msg.primitive_state[i].name] = std::make_shared<primitive_motion_level_tools::PrimitiveState>(msg.primitive_state[i].name);
+      }
+    }
+    // 各指令値の反映
+    for(size_t i=0;i<msg.primitive_state.size();i++){
+      const primitive_motion_level_msgs::PrimitiveState& msgstate = msg.primitive_state[i];
+      std::shared_ptr<primitive_motion_level_tools::PrimitiveState> state = this->primitiveState_[msgstate.name];
+      state->updateFromMsg(msgstate);
+    }
+  }
+
   void PrimitiveStates::updateTargetForOneStep(double dt) {
     for(std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >::iterator it = this->primitiveState_.begin(); it != this->primitiveState_.end(); it++) {
       it->second->updateTargetForOneStep(dt);
@@ -161,6 +264,14 @@ namespace primitive_motion_level_tools {
     for(int i=0;i<idl.data.length();i++){
       if(!this->primitiveStates_[i]) this->primitiveStates_[i] = std::make_shared<PrimitiveStates>();
       this->primitiveStates_[i]->updateFromIdl(idl.data[i]);
+    }
+  }
+
+  void PrimitiveStatesSequence::updateFromMsg(const primitive_motion_level_msgs::PrimitiveStateArrayArray& msg){
+    this->primitiveStates_.resize(msg.primitive_states.size());
+    for(int i=0;i<msg.primitive_states.size();i++){
+      if(!this->primitiveStates_[i]) this->primitiveStates_[i] = std::make_shared<PrimitiveStates>();
+      this->primitiveStates_[i]->updateFromMsg(msg.primitive_states[i]);
     }
   }
 

@@ -31,7 +31,11 @@ from primitive_motion_level_tools.primitive_state import updatePrimitiveStateFro
 if __name__ == "__main__":
     rospy.init_node("primitive_state_publisher")
 
-    pub = rospy.Publisher('~output', PrimitiveStateArray, queue_size=1, latch=True)
+    latch = False
+    if rospy.has_param("~latch"):
+        latch = bool(rospy.get_param("~latch"))
+
+    pub = rospy.Publisher('~output', PrimitiveStateArray, queue_size=1, latch=latch)
     msg = PrimitiveStateArray()
 
     if rospy.has_param("~end_effectors"):
@@ -41,5 +45,12 @@ if __name__ == "__main__":
             updatePrimitiveStateFromParam(state,end_effector_param)
             msg.primitive_state.append(state)
 
-    pub.publish(msg)
-    rospy.spin()
+    if latch:
+        pub.publish(msg)
+        rospy.spin()
+    else:
+        rate = rospy.Rate(10) # 10hz
+        while not rospy.is_shutdown():
+            pub.publish(msg)
+            rate.sleep()
+

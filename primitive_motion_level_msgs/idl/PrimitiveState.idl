@@ -2,10 +2,6 @@
 
 module primitive_motion_level_msgs
 {
-  typedef double DblSequence6[6];
-  typedef sequence<double> DblSequence;
-  typedef sequence<DblSequence6> DblSequence6Sequence;
-
   struct PrimitiveStateIdl
   {
     string name;
@@ -14,25 +10,25 @@ module primitive_motion_level_msgs
 
     double time; // interpolation time
     RTC::Pose3D pose; // world frame
-    DblSequence6 wrench; // world frame. around pose. robot receives
-    DblSequence6 poseFollowGain;// pose local frame
-    DblSequence6 wrenchFollowGain;// pose local frame
+    sequence<double, 6> wrench; // world frame. around pose. robot receives
+    sequence<double, 6> poseFollowGain;// pose local frame
+    sequence<double, 6> wrenchFollowGain;// pose local frame
 
     // pose local frame (if isGlobal=false). world frame (if isGlobal=true).
     boolean isPoseCGlobal;
-    DblSequence6Sequence poseC; //pose の frameからのerror の制約
-    DblSequence poseld;
-    DblSequence  poseud;
+    sequence<sequence<double, 6> > poseC; //pose の frameからのerror の制約
+    sequence<double> poseld;
+    sequence<double> poseud;
     boolean isWrenchCGlobal;
-    DblSequence6Sequence wrenchC; //wrench の制約
-    DblSequence wrenchld;
-    DblSequence wrenchud;
+    sequence<sequence<double, 6> > wrenchC; //wrench の制約
+    sequence<double> wrenchld;
+    sequence<double> wrenchud;
 
     // pose local frame
-    DblSequence6 actWrench; // Position control only
-    DblSequence6 M;
-    DblSequence6 D;
-    DblSequence6 K;
+    sequence<double, 6> actWrench; // Position control only
+    sequence<double, 6> M;
+    sequence<double, 6> D;
+    sequence<double, 6> K;
 
     // 支持脚かどうか
     boolean supportCOM;

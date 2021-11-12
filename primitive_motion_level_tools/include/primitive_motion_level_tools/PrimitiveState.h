@@ -92,6 +92,7 @@ namespace primitive_motion_level_tools {
     void updateTargetForOneStep(double dt);
 
     const std::map<std::string, std::shared_ptr<PrimitiveState> >& primitiveState() const { return primitiveState_;}
+    std::map<std::string, std::shared_ptr<PrimitiveState> >& primitiveState() { return primitiveState_;}
     double& time() { return time_;}
     const double& time() const { return time_;}
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -107,6 +108,7 @@ namespace primitive_motion_level_tools {
     void updateTargetForOneStep(double dt);
 
     const std::vector<std::shared_ptr<PrimitiveStates> >& primitiveStates() const { return primitiveStates_;}
+    std::vector<std::shared_ptr<PrimitiveStates> >& primitiveStates() { return primitiveStates_;}
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   protected:
     std::vector<std::shared_ptr<PrimitiveStates> > primitiveStates_;

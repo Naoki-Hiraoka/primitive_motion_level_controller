@@ -67,7 +67,6 @@ std::string VRMLToURDFLinkName(cnoid::BodyPtr robot_vrml, std::shared_ptr<urdf::
 
 RTC::ReturnCode_t PrimitiveStateROSBridge::onExecute(RTC::UniqueId ec_id){
   ros::spinOnce();
-
   if(this->m_primitiveCommandRTMIn_.isNew()){
     this->m_primitiveCommandRTMIn_.read();
 
@@ -98,7 +97,6 @@ RTC::ReturnCode_t PrimitiveStateROSBridge::onExecute(RTC::UniqueId ec_id){
     }
     this->seqPub_.publish(msg);
   }
-
   return RTC::RTC_OK;
 }
 
@@ -112,6 +110,7 @@ void PrimitiveStateROSBridge::topicCallback(const primitive_motion_level_msgs::P
   }
 
   m_primitiveCommandROSOut_.write();
+
 }
 
 void PrimitiveStateROSBridge::seqTopicCallback(const primitive_motion_level_msgs::PrimitiveStateArrayArray::ConstPtr& msg) {
@@ -128,6 +127,7 @@ void PrimitiveStateROSBridge::seqTopicCallback(const primitive_motion_level_msgs
     }
   }
   m_primitiveCommandSeqROSOut_.write();
+
 }
 
 void PrimitiveStateROSBridge::primitiveStateIdl2Msg(const primitive_motion_level_msgs::PrimitiveStateIdl& in, primitive_motion_level_msgs::PrimitiveState& out, const cnoid::BodyPtr& robot_vrml, const std::shared_ptr<urdf::Model>& robot_urdf) {
@@ -214,25 +214,29 @@ void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level
   out.pose.position.z = in.pose.position.z;
   quat = tf2::Quaternion(in.pose.orientation.x,in.pose.orientation.y,in.pose.orientation.z,in.pose.orientation.w);
   tf2::Matrix3x3(quat).getRPY(out.pose.orientation.r,out.pose.orientation.p,out.pose.orientation.y);
+  out.wrench.length(6);
   if(in.wrench.size() == 6){
-    for(int j=0;j<in.wrench.size();j++) out.wrench[j] = in.wrench[j];
+    for(int j=0;j<6;j++) out.wrench[j] = in.wrench[j];
   }else{
-    for(int j=0;j<in.wrench.size();j++) out.wrench[j] = 0.0;
+    for(int j=0;j<6;j++) out.wrench[j] = 0.0;
   }
+  out.poseFollowGain.length(6);
   if(in.pose_follow_gain.size() == 6) {
-    for(int j=0;j<in.pose_follow_gain.size();j++) out.poseFollowGain[j] = in.pose_follow_gain[j];
+    for(int j=0;j<6;j++) out.poseFollowGain[j] = in.pose_follow_gain[j];
   }else{
-    for(int j=0;j<in.pose_follow_gain.size();j++) out.poseFollowGain[j] = 0.0;
+    for(int j=0;j<6;j++) out.poseFollowGain[j] = 0.0;
   }
+  out.wrenchFollowGain.length(6);
   if(in.wrench_follow_gain.size() == 6) {
-    for(int j=0;j<in.wrench_follow_gain.size();j++) out.wrenchFollowGain[j] = in.wrench_follow_gain[j];
+    for(int j=0;j<6;j++) out.wrenchFollowGain[j] = in.wrench_follow_gain[j];
   }else{
-    for(int j=0;j<in.wrench_follow_gain.size();j++) out.wrenchFollowGain[j] = 0.0;
+    for(int j=0;j<6;j++) out.wrenchFollowGain[j] = 0.0;
   }
   out.isPoseCGlobal = in.is_poseC_global;
   if(in.poseC.size() % 6 == 0){
     out.poseC.length(in.poseC.size() / 6);
     for(int j=0;j<out.poseC.length(); j++) {
+      out.poseC[j].length(6);
       for(int k=0;k<6;k++){
         out.poseC[j][k] = in.poseC[j*6+k];
       }
@@ -250,6 +254,7 @@ void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level
   if(in.wrenchC.size() % 6 == 0){
     out.wrenchC.length(in.wrenchC.size() / 6);
     for(int j=0;j<out.wrenchC.length(); j++) {
+      out.wrenchC[j].length(6);
       for(int k=0;k<6;k++){
         out.wrenchC[j][k] = in.wrenchC[j*6+k];
       }
@@ -263,25 +268,29 @@ void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level
   for(int j=0;j<out.wrenchud.length(); j++) {
     out.wrenchud[j] = in.wrenchud[j];
   }
+  out.M.length(6);
   if(in.M.size() == 6) {
-    for(int j=0;j<in.M.size();j++) out.M[j] = in.M[j];
+    for(int j=0;j<6;j++) out.M[j] = in.M[j];
   }else{
-    for(int j=0;j<in.M.size();j++) out.M[j] = 0.0;
+    for(int j=0;j<6;j++) out.M[j] = 0.0;
   }
+  out.D.length(6);
   if(in.D.size() == 6) {
-    for(int j=0;j<in.D.size();j++) out.D[j] = in.D[j];
+    for(int j=0;j<6;j++) out.D[j] = in.D[j];
   }else{
-    for(int j=0;j<in.D.size();j++) out.D[j] = 0.0;
+    for(int j=0;j<6;j++) out.D[j] = 0.0;
   }
+  out.K.length(6);
   if(in.K.size() == 6) {
-    for(int j=0;j<in.K.size();j++) out.K[j] = in.K[j];
+    for(int j=0;j<6;j++) out.K[j] = in.K[j];
   }else{
-    for(int j=0;j<in.K.size();j++) out.K[j] = 0.0;
+    for(int j=0;j<6;j++) out.K[j] = 0.0;
   }
+  out.actWrench.length(6);
   if(in.act_wrench.size() == 6) {
-    for(int j=0;j<in.act_wrench.size();j++) out.actWrench[j] = in.act_wrench[j];
+    for(int j=0;j<6;j++) out.actWrench[j] = in.act_wrench[j];
   }else{
-    for(int j=0;j<in.act_wrench.size();j++) out.actWrench[j] = 0.0;
+    for(int j=0;j<6;j++) out.actWrench[j] = 0.0;
   }
   out.supportCOM = in.support_com;
 }

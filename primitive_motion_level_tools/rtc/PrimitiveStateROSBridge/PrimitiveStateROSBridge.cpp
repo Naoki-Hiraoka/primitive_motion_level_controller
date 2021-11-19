@@ -206,14 +206,19 @@ void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level
   out.localPose.position.x = in.local_pose.position.x;
   out.localPose.position.y = in.local_pose.position.y;
   out.localPose.position.z = in.local_pose.position.z;
-  tf2::Quaternion quat(in.local_pose.orientation.x,in.local_pose.orientation.y,in.local_pose.orientation.z,in.local_pose.orientation.w);
-  tf2::Matrix3x3(quat).getRPY(out.localPose.orientation.r,out.localPose.orientation.p,out.localPose.orientation.y);
+  // tf2::Matrix3x3::getEulerYPRやtf2::Matrix3x3::getRPYにはバグがある https://github.com/ros/geometry2/issues/504
+  cnoid::Vector3 ypr = Eigen::Quaterniond(in.local_pose.orientation.w,in.local_pose.orientation.x,in.local_pose.orientation.y,in.local_pose.orientation.z).toRotationMatrix().eulerAngles(2,1,0);
+  out.localPose.orientation.r = ypr[2];
+  out.localPose.orientation.p = ypr[1];
+  out.localPose.orientation.y = ypr[0];
   out.time = in.time;
   out.pose.position.x = in.pose.position.x;
   out.pose.position.y = in.pose.position.y;
   out.pose.position.z = in.pose.position.z;
-  quat = tf2::Quaternion(in.pose.orientation.x,in.pose.orientation.y,in.pose.orientation.z,in.pose.orientation.w);
-  tf2::Matrix3x3(quat).getRPY(out.pose.orientation.r,out.pose.orientation.p,out.pose.orientation.y);
+  ypr = Eigen::Quaterniond(in.pose.orientation.w,in.pose.orientation.x,in.pose.orientation.y,in.pose.orientation.z).toRotationMatrix().eulerAngles(2,1,0);
+  out.pose.orientation.r = ypr[2];
+  out.pose.orientation.p = ypr[1];
+  out.pose.orientation.y = ypr[0];
   out.wrench.length(6);
   if(in.wrench.size() == 6){
     for(int j=0;j<6;j++) out.wrench[j] = in.wrench[j];

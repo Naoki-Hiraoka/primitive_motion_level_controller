@@ -213,8 +213,8 @@ if __name__ == "__main__":
         for end_effector_param in end_effector_params:
             end_effectors.append(EndEffector(server,tfl,end_effector_param))
 
-    pub = rospy.Publisher('~command', PrimitiveStateArray, queue_size=1)
-    previewPub = rospy.Publisher('~previewCommand', PrimitiveStateArrayArray, queue_size=1)
+    pub = rospy.Publisher('~command', PrimitiveStateArray, queue_size=10)
+    previewPub = rospy.Publisher('~previewCommand', PrimitiveStateArrayArray, queue_size=10)
 
     is_active = False
     def handle_activate(req):

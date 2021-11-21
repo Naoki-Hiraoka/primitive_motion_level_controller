@@ -174,7 +174,8 @@ namespace WholeBodyTorque {
     // command level指令の関節角度に追従するトルクを足す
     //  モータドライバで行う TODO
     for(size_t i=0;i<useJoints.size();i++) if(useJoints[i]->jointId()>=0) useJoints[i]->q() = robot_ref->joint(useJoints[i]->jointId())->q();
-    for(size_t i=0;i<useJoints.size();i++) if(useJoints[i]->jointId()>=0) useJoints[i]->u() += - 10 * robot_act->joint(useJoints[i]->jointId())->dq();
+    // 摩擦の無いシミュレーターでは，Dgainは10程度無いと発散する. 一方で，実機ではDgainは0でないと振動する.
+    // for(size_t i=0;i<useJoints.size();i++) if(useJoints[i]->jointId()>=0) useJoints[i]->u() += - 10 * robot_act->joint(useJoints[i]->jointId())->dq();
 
     // soft joint limit トルクを足す
     TorqueController::calcJointLimitTorque(robot_act, useJoints);

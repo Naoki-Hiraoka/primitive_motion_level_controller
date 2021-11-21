@@ -41,7 +41,7 @@ namespace WholeBodyTorque {
     derrorLocal.tail<3>() = this->primitiveCommand_->targetPose().linear().transpose() * derror.tail<3>();
 
     cnoid::Vector6 targetWrenchLocal = cnoid::Vector6::Zero(); // robot receive
-    targetWrenchLocal += (errorLocal.cwiseProduct(this->primitiveCommand_->K()) + errorLocal.cwiseProduct(this->primitiveCommand_->D()) ).cwiseProduct(this->primitiveCommand_->poseFollowGain());
+    targetWrenchLocal += (errorLocal.cwiseProduct(this->primitiveCommand_->K()) + derrorLocal.cwiseProduct(this->primitiveCommand_->D()) ).cwiseProduct(this->primitiveCommand_->poseFollowGain());
     {
       cnoid::Vector6 refWrench = this->primitiveCommand_->targetWrench();
       cnoid::Vector6 refWrenchLocal;

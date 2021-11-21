@@ -149,8 +149,9 @@ namespace WholeBodyTorque {
         const double soft_llimit = useJoints[i]->q_lower() + 0.261799;
         double soft_jlimit_tq = 0;
         double qAct = robot_act->joint(useJoints[i]->jointId())->q();
-        if(qAct > soft_ulimit){ soft_jlimit_tq = 100 * (soft_ulimit - qAct); }
-        if(qAct < soft_llimit){ soft_jlimit_tq = 100 * (soft_llimit - qAct); }
+        // もともとはPゲインは100だったが，振動することがあった
+        if(qAct > soft_ulimit){ soft_jlimit_tq = 30 * (soft_ulimit - qAct); }
+        if(qAct < soft_llimit){ soft_jlimit_tq = 30 * (soft_llimit - qAct); }
         useJoints[i]->u() += soft_jlimit_tq;
       }
     }
@@ -191,14 +192,18 @@ namespace WholeBodyTorque {
     // 各primitive command実現のためのトルクを足す (supportCOM, com)
     // TODO
 
-    // トルク上限でリミット
     for(int i=0;i<useJoints.size();i++){
+      // トルク上限でリミット
       double climit, gearRatio, torqueConst;
       useJoints[i]->info()->read("climit",climit);
       useJoints[i]->info()->read("gearRatio",gearRatio);
       useJoints[i]->info()->read("torqueConst",torqueConst);
       double maxTorque = climit * gearRatio * torqueConst;
       useJoints[i]->u() = std::min(std::max(useJoints[i]->u(), -maxTorque), maxTorque);
+
+      // 関節角度上下限を超えている場合，その方向には力を発揮しない
+      if(useJoints[i]->q() > useJoints[i]->q_upper()) useJoints[i]->u() = std::min(useJoints[i]->u(), 0.0);
+      if(useJoints[i]->q() < useJoints[i]->q_lower()) useJoints[i]->u() = std::max(useJoints[i]->u(), 0.0);
     }
 
   }

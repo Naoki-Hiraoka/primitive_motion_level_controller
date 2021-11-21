@@ -202,8 +202,9 @@ namespace WholeBodyTorque {
       useJoints[i]->u() = std::min(std::max(useJoints[i]->u(), -maxTorque), maxTorque);
 
       // 関節角度上下限を超えている場合，その方向には力を発揮しない
-      if(useJoints[i]->q() > useJoints[i]->q_upper()) useJoints[i]->u() = std::min(useJoints[i]->u(), 0.0);
-      if(useJoints[i]->q() < useJoints[i]->q_lower()) useJoints[i]->u() = std::max(useJoints[i]->u(), 0.0);
+      double qAct = robot_act->joint(useJoints[i]->jointId())->q();
+      if(qAct > useJoints[i]->q_upper()) useJoints[i]->u() = std::min(useJoints[i]->u(), 0.0);
+      if(qAct < useJoints[i]->q_lower()) useJoints[i]->u() = std::max(useJoints[i]->u(), 0.0);
     }
 
   }

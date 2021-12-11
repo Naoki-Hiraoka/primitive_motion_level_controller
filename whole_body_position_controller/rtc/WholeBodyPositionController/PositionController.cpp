@@ -411,7 +411,7 @@ namespace WholeBodyPosition {
     PositionController::getJointLimitIKConstraints(this->jointLimitConstraint_, limitConstraint, useJoints, jointLimitTablesMap, dt);
 
     // 自己干渉上下限を取得
-    PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 1.0, 0.3/dt); // 急激に動作方向が変化する恐れがあるので、velocitydamperをつける
+    PositionController::getCollisionIKConstraints(this->collisionConstraint_, limitConstraint, robot_com, selfCollisions, dt, 0.01, 0.1/dt, 1.0); // 急激に動作方向が変化する恐れがあるので、velocitydamperをつける
 
     std::vector<std::shared_ptr<IK::IKConstraint> > softLimitConstraint;
     // 環境干渉上下限を取得

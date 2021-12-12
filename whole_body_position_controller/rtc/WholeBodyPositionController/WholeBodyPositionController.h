@@ -145,6 +145,9 @@ protected:
   cnoid::BodyPtr m_robot_ref_; // reference (q, basepos and baserpy only)
   cnoid::BodyPtr m_robot_com_; // command<
 
+  // params
+  double jointVelocityLimit_ = 4.0;
+
 
   // 0. robotの設定
   std::unordered_map<cnoid::LinkPtr, std::vector<std::shared_ptr<joint_limit_table::JointLimitTable> > > jointLimitTablesMap_;

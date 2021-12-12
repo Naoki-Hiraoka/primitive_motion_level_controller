@@ -23,6 +23,7 @@ module whole_body_position_controller
       boolean followRootLink;
       double comVelocityLimit;
       double angularMomentumLimit;
+      double jointVelocityLimit;
     };
     void setParams(in WholeBodyPositionControllerParam i_param);
     void getParams(out WholeBodyPositionControllerParam i_param);

@@ -30,7 +30,10 @@ RTC::ReturnCode_t PrimitiveStateROSBridge::onInitialize(){
   }
 
   this->robot_urdf_ = std::make_shared<urdf::Model>();
-  this->robot_urdf_->initParam("robot_description");
+  if(!this->robot_urdf_->initParam("robot_description")){
+    ROS_FATAL_STREAM("urdf->initParam(robot_description) failed");
+    return RTC::RTC_ERROR;
+  }
 
   ros::NodeHandle pnh("~");
   sub_ = pnh.subscribe("input", 1, &PrimitiveStateROSBridge::topicCallback, this);
@@ -50,7 +53,7 @@ std::string URDFToVRMLLinkName(cnoid::BodyPtr robot_vrml, std::shared_ptr<urdf::
       return robot_vrml->rootLink()->name();
     }
   }
-  std::cerr << "\x1b[31m" << "[URDFToVRMLLinkName] failed to find link [" << URDFLinkName << "]" << "\x1b[39m" << std::endl;
+  ROS_ERROR_STREAM("[URDFToVRMLLinkName] failed to find link [" << URDFLinkName << "]");
   return URDFLinkName;
 };
 
@@ -61,7 +64,7 @@ std::string VRMLToURDFLinkName(cnoid::BodyPtr robot_vrml, std::shared_ptr<urdf::
   }else if (robot_vrml->rootLink()->name() == VRMLLinkName){
     return robot_urdf->getRoot()->name;
   }
-  std::cerr << "\x1b[31m" << "[VRMLToURDFLinkName] failed to find link [" << VRMLLinkName << "]" << "\x1b[39m" << std::endl;
+  ROS_ERROR_STREAM("[VRMLToURDFLinkName] failed to find link [" << VRMLLinkName << "]");
   return VRMLLinkName;
 };
 

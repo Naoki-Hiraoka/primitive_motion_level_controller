@@ -19,6 +19,7 @@
 #       M: [x ,y, z, rx, ry, rz] # default 10, 10, 10, 5, 5, 5
 #       D: [x ,y, z, rx, ry, rz] # default 200, 200, 200, 100, 100, 100
 #       K: [x ,y, z, rx, ry, rz] # default 400, 400, 400, 200, 200, 200
+#       cared: <bool> # default True
 #  preview_time: <double> # default 1.0
 
 # publish
@@ -51,6 +52,9 @@ class EndEffector:
     state = None
     preview_support_com = None
     is_active = False
+    is_cared = True
+    cared_s = None
+
     def __init__(self, interactiveMarkerServer, tfListener, param):
         self.server = interactiveMarkerServer
         self.tfl = tfListener
@@ -59,14 +63,28 @@ class EndEffector:
         self.state = PrimitiveState()
         updatePrimitiveStateFromParam(self.state,param)
         self.preview_support_com = copy.deepcopy(self.state.support_com)
+        if "cared" in param:
+            self.is_cared = param["cared"]
 
         self.int_marker = InteractiveMarker()
         self.int_marker.name = self.state.name
         self.int_marker.scale = 0.4
 
-    def activate(self):
-        if self.is_active:
-            return True
+        self.cared_s = rospy.Service('~'+self.state.name+'_cared', SetBool, self.handle_cared)
+
+    def handle_cared(self, req):
+        if req.data == self.is_cared:
+            return SetBoolResponse(True, "")
+        self.is_cared = req.data
+        if req.data:
+            if self.is_active:
+                self.start()
+        else:
+            if self.is_active:
+                self.stop()
+        return SetBoolResponse(True, "")
+
+    def start(self):
         self.int_marker.description = self.int_marker.name;
         self.int_marker.header.frame_id = tf_prefix + "odom"
 
@@ -146,14 +164,23 @@ class EndEffector:
         self.menu_handler.apply(self.server, self.state.name)
 
         self.server.applyChanges()
+
+    def stop(self):
+        self.server.erase(self.int_marker.name)
+        self.server.applyChanges()
+
+    def activate(self):
+        if self.is_active:
+            return True
+        if self.is_cared:
+            self.start()
         self.is_active = True
 
     def deactivate(self):
         if not self.is_active:
             return True
-        self.server.erase(self.int_marker.name)
-        self.server.applyChanges()
-
+        if self.is_cared:
+            self.stop()
         self.is_active = False
 
     def processFeedback(self, feedback):
@@ -234,13 +261,15 @@ if __name__ == "__main__":
             if is_active:
                 msg = PrimitiveStateArray()
                 for end_effector in end_effectors:
-                    msg.primitive_state.append(end_effector.getState())
+                    if end_effector.is_cared:
+                        msg.primitive_state.append(end_effector.getState())
                 pub.publish(msg)
                 msg = PrimitiveStateArrayArray()
                 primitive_states = PrimitiveStateArray()
                 primitive_states.header.stamp = rospy.Time(preview_time)
                 for end_effector in end_effectors:
-                    primitive_states.primitive_state.append(end_effector.getPreviewState())
+                    if end_effector.is_cared:
+                        primitive_states.primitive_state.append(end_effector.getPreviewState())
                 msg.primitive_states.append(primitive_states)
                 previewPub.publish(msg)
             r.sleep()

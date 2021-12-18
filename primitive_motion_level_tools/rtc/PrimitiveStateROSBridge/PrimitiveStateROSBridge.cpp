@@ -31,7 +31,7 @@ RTC::ReturnCode_t PrimitiveStateROSBridge::onInitialize(){
 
   this->robot_urdf_ = std::make_shared<urdf::Model>();
   if(!this->robot_urdf_->initParam("robot_description")){
-    ROS_FATAL_STREAM("urdf->initParam(robot_description) failed");
+    std::cerr << "\x1b[31m[" << m_profile.instance_name << "] " << "urdf->initParam(robot_description) failed" << "\x1b[39m" << std::endl;
     return RTC::RTC_ERROR;
   }
 
@@ -249,6 +249,8 @@ void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level
         out.poseC[j][k] = in.poseC[j*6+k];
       }
     }
+  }else{
+    out.poseC.length(0);
   }
   out.poseld.length(in.poseld.size());
   for(int j=0;j<out.poseld.length(); j++) {
@@ -267,6 +269,8 @@ void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level
         out.wrenchC[j][k] = in.wrenchC[j*6+k];
       }
     }
+  }else{
+    out.wrenchC.length(0);
   }
   out.wrenchld.length(in.wrenchld.size());
   for(int j=0;j<out.wrenchld.length(); j++) {

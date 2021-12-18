@@ -20,6 +20,8 @@ protected:
   std::shared_ptr<urdf::Model> robot_urdf_;
   cnoid::BodyPtr robot_vrml_;
 
+  ros::NodeHandle nh; // これがないとうまく通信できなくなったり、CPU使用率100%になったりする
+
   primitive_motion_level_msgs::TimedPrimitiveStateSeq m_primitiveCommandRTM_;
   RTC::InPort <primitive_motion_level_msgs::TimedPrimitiveStateSeq> m_primitiveCommandRTMIn_;
   ros::Publisher pub_;

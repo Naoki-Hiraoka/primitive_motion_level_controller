@@ -10,6 +10,14 @@ namespace WholeBodyPosition {
   {
   }
 
+  void PositionController::PositionTask::updateFromPrimitiveCommand(const std::shared_ptr<const primitive_motion_level_tools::PrimitiveState>& primitiveCommand) {
+    this->primitiveCommand_ = primitiveCommand;
+    if(this->primitiveCommand_->time() == 0.0){ // ワープ.
+      this->offset_ = cnoid::Position::Identity();
+      this->dOffsetPrev_ = cnoid::Vector6::Zero();
+    }
+  }
+
   void PositionController::PositionTask::calcImpedanceControl(double dt){
     cnoid::Matrix3 eeR = this->offset_.linear() * this->primitiveCommand_->targetPose().linear();
 

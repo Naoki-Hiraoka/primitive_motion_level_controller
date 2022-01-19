@@ -376,6 +376,16 @@ namespace primitive_motion_level_tools {
     }
   }
 
+  primitive_motion_level_msgs::PrimitiveStateArray PrimitiveStates::toMsg(){
+    primitive_motion_level_msgs::PrimitiveStateArray msg;
+    msg.header.stamp.sec = long(this->time_);
+    msg.header.stamp.nsec = long((this->time_ - msg.header.stamp.sec) * 1e9);
+    for(std::map<std::string, std::shared_ptr<primitive_motion_level_tools::PrimitiveState> >::iterator it = this->primitiveState_.begin(); it != this->primitiveState_.end(); it++) {
+      msg.primitive_state.push_back(it->second->toMsg());
+    }
+    return msg;
+  }
+
   void PrimitiveStatesSequence::updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeqSeq& idl){
     this->primitiveStates_.resize(idl.data.length());
     for(int i=0;i<idl.data.length();i++){
@@ -400,6 +410,14 @@ namespace primitive_motion_level_tools {
     for(int i=0;i<this->primitiveStates_.size();i++){
       this->primitiveStates_[i]->updateTargetForOneStep(dt);
     }
+  }
+
+  primitive_motion_level_msgs::PrimitiveStateArrayArray PrimitiveStatesSequence::toMsg(){
+    primitive_motion_level_msgs::PrimitiveStateArrayArray msg;
+    for(int i=0;i<this->primitiveStates_.size();i++) {
+      msg.primitive_states.push_back(this->primitiveStates_[i]->toMsg());
+    }
+    return msg;
   }
 
 };

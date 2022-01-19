@@ -204,7 +204,7 @@ void PrimitiveStateROSBridge::primitiveStateIdl2Msg(const primitive_motion_level
 
 void PrimitiveStateROSBridge::primitiveStateMsg2Idl(const primitive_motion_level_msgs::PrimitiveState& in, primitive_motion_level_msgs::PrimitiveStateIdl& out, const cnoid::BodyPtr& robot_vrml, const std::shared_ptr<urdf::Model>& robot_urdf) {
   out.name = in.name.c_str();
-  if(in.parent_link_name == "com") out.parentLinkName = "com";
+  if(out.name == "com") out.parentLinkName = "com";
   else out.parentLinkName = URDFToVRMLLinkName(robot_vrml, robot_urdf, in.parent_link_name).c_str();
   out.localPose.position.x = in.local_pose.position.x;
   out.localPose.position.y = in.local_pose.position.y;

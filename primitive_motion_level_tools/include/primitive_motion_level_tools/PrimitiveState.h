@@ -25,6 +25,7 @@ namespace primitive_motion_level_tools {
     const std::string& parentLinkName() const { return parentLinkName_;}
     const cnoid::Position& localPose() const { return localPose_;}
     const double& time() const { return time_;}
+    double& time() { return time_;}
     const cnoid::Position& targetPose() const { return targetPose_;}
     cnoid::Position& targetPose() { return targetPose_;}
     const cnoid::Position& targetPoseRaw() const { return targetPoseRaw_;}
@@ -95,6 +96,7 @@ namespace primitive_motion_level_tools {
     void updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeq& idl);
     void updateFromMsg(const primitive_motion_level_msgs::PrimitiveStateArray& msg);
     void updateTargetForOneStep(double dt);
+    primitive_motion_level_msgs::PrimitiveStateArray toMsg();
 
     const std::map<std::string, std::shared_ptr<PrimitiveState> >& primitiveState() const { return primitiveState_;}
     std::map<std::string, std::shared_ptr<PrimitiveState> >& primitiveState() { return primitiveState_;}
@@ -111,6 +113,7 @@ namespace primitive_motion_level_tools {
     void updateFromIdl(const primitive_motion_level_msgs::TimedPrimitiveStateSeqSeq& idl);
     void updateFromMsg(const primitive_motion_level_msgs::PrimitiveStateArrayArray& msg);
     void updateTargetForOneStep(double dt);
+    primitive_motion_level_msgs::PrimitiveStateArrayArray toMsg();
 
     const std::vector<std::shared_ptr<PrimitiveStates> >& primitiveStates() const { return primitiveStates_;}
     std::vector<std::shared_ptr<PrimitiveStates> >& primitiveStates() { return primitiveStates_;}

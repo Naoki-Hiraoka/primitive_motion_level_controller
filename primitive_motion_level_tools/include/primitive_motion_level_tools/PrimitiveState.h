@@ -9,6 +9,7 @@
 #include <cpp_filters/TwoPointInterpolator.h>
 #include <memory>
 #include <map>
+#include <ros/ros.h>
 
 namespace primitive_motion_level_tools {
   class PrimitiveState {
@@ -17,12 +18,15 @@ namespace primitive_motion_level_tools {
     PrimitiveState(const std::string& name);
     void updateFromIdl(const primitive_motion_level_msgs::PrimitiveStateIdl& idl);
     void updateFromMsg(const primitive_motion_level_msgs::PrimitiveState& msg);
+    primitive_motion_level_msgs::PrimitiveState toMsg();
+    void updateFromParam(ros::NodeHandle& nh, const std::string& ns);
     void updateTargetForOneStep(double dt);
     const std::string& name() const { return name_;}
     const std::string& parentLinkName() const { return parentLinkName_;}
     const cnoid::Position& localPose() const { return localPose_;}
     const double& time() const { return time_;}
     const cnoid::Position& targetPose() const { return targetPose_;}
+    cnoid::Position& targetPose() { return targetPose_;}
     const cnoid::Position& targetPoseRaw() const { return targetPoseRaw_;}
     const cnoid::Vector6& targetWrench() const { return targetWrench_;}
     const cnoid::Vector6& targetWrenchRaw() const { return targetWrenchRaw_;}
@@ -41,6 +45,7 @@ namespace primitive_motion_level_tools {
     const cnoid::Vector6& K() const { return K_;}
     const cnoid::Vector6& actWrench() const { return actWrench_;}
     const bool& supportCOM() const { return supportCOM_; }
+    bool& supportCOM() { return supportCOM_; }
     bool setInterpolationMode (cpp_filters::interpolation_mode i_mode){
       return
         targetPositionInterpolator_.setInterpolationMode(i_mode) &&

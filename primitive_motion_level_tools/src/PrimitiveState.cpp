@@ -189,6 +189,123 @@ namespace primitive_motion_level_tools {
     this->isInitial_ = false;
   }
 
+  primitive_motion_level_msgs::PrimitiveState PrimitiveState::toMsg() {
+    primitive_motion_level_msgs::PrimitiveState msg;
+    msg.name = this->name_;
+    msg.parent_link_name = this->parentLinkName_;
+    msg.local_pose.position.x = this->localPose_.translation()[0];
+    msg.local_pose.position.y = this->localPose_.translation()[1];
+    msg.local_pose.position.z = this->localPose_.translation()[2];
+    cnoid::Quaternion quat = cnoid::Quaternion(this->localPose_.linear());
+    msg.local_pose.orientation.x = quat.x();
+    msg.local_pose.orientation.y = quat.y();
+    msg.local_pose.orientation.z = quat.z();
+    msg.local_pose.orientation.w = quat.w();
+    msg.time = this->time_;
+    msg.pose.position.x = this->targetPose_.translation()[0];
+    msg.pose.position.y = this->targetPose_.translation()[1];
+    msg.pose.position.z = this->targetPose_.translation()[2];
+    quat = this->targetPose_.linear();
+    msg.pose.orientation.x = quat.x();
+    msg.pose.orientation.y = quat.y();
+    msg.pose.orientation.z = quat.z();
+    msg.pose.orientation.w = quat.w();
+    msg.wrench.resize(6);
+    for(int i=0;i<6;i++) msg.wrench[i] = this->targetWrench_[i];
+    msg.pose_follow_gain.resize(6);
+    for(int i=0;i<6;i++) msg.pose_follow_gain[i] = this->poseFollowGain_[i];
+    msg.wrench_follow_gain.resize(6);
+    for(int i=0;i<6;i++) msg.wrench_follow_gain[i] = this->wrenchFollowGain_[i];
+    msg.is_poseC_global = this->isPoseCGlobal_;
+    cnoid::MatrixXd poseC = this->poseC_;
+    msg.poseC.resize(poseC.rows()*poseC.cols());
+    for(int i=0;i<poseC.rows();i++){
+      for(int j=0;j<poseC.cols();j++){
+        msg.poseC[i*6+j] = poseC(i,j);
+      }
+    }
+    msg.poseld.resize(this->poseld_.size());
+    for(int i=0;i<this->poseld_.size();i++) msg.poseld[i] = this->poseld_[i];
+    msg.poseud.resize(this->poseud_.size());
+    for(int i=0;i<this->poseud_.size();i++) msg.poseud[i] = this->poseud_[i];
+    msg.is_wrenchC_global = this->isWrenchCGlobal_;
+    cnoid::MatrixXd wrenchC = this->wrenchC_;
+    msg.wrenchC.resize(wrenchC.rows()*wrenchC.cols());
+    for(int i=0;i<wrenchC.rows();i++){
+      for(int j=0;j<wrenchC.cols();j++){
+        msg.wrenchC[i*6+j] = wrenchC(i,j);
+      }
+    }
+    msg.wrenchld.resize(this->wrenchld_.size());
+    for(int i=0;i<this->wrenchld_.size();i++) msg.wrenchld[i] = this->wrenchld_[i];
+    msg.wrenchud.resize(this->wrenchud_.size());
+    for(int i=0;i<this->wrenchud_.size();i++) msg.wrenchud[i] = this->wrenchud_[i];
+    msg.act_wrench.resize(6);
+    for(int i=0;i<6;i++) msg.act_wrench[i] = this->actWrench_[i];
+    msg.M.resize(6);
+    for(int i=0;i<6;i++) msg.M[i] = this->M_[i];
+    msg.D.resize(6);
+    for(int i=0;i<6;i++) msg.D[i] = this->D_[i];
+    msg.K.resize(6);
+    for(int i=0;i<6;i++) msg.K[i] = this->K_[i];
+    msg.support_com = this->supportCOM_;
+
+    return msg;
+  }
+
+  void PrimitiveState::updateFromParam(ros::NodeHandle& nh, const std::string& ns) {
+    std::vector<double> doublevec;
+
+    if(!nh.getParam(ns+"name",this->name_))
+      std::cerr << "\x1b[31m[PrimitiveState::updateFromParam] " << "name not defined" << "\x1b[39m" << std::endl;
+    nh.getParam(ns+"parent_link_name",this->parentLinkName_);
+    if(nh.getParam(ns+"local_pose",doublevec) && doublevec.size()==7){
+      this->localPose_.translation()[0] = doublevec[0];
+      this->localPose_.translation()[1] = doublevec[1];
+      this->localPose_.translation()[2] = doublevec[2];
+      this->localPose_.linear() = cnoid::Matrix3(cnoid::Quaternion(doublevec[6],doublevec[3],doublevec[4],doublevec[5]));
+    }
+    nh.getParam(ns+"support_com",this->supportCOM_);
+    nh.getParam(ns+"time",this->time_);
+    nh.getParam(ns+"is_wrenchC_global",this->isWrenchCGlobal_);
+    if(nh.getParam(ns+"wrenchC",doublevec) && doublevec.size()%6==0){
+      this->wrenchC_ = Eigen::SparseMatrix<double,Eigen::RowMajor>(doublevec.size()/6,6);
+      for(size_t i=0;i<doublevec.size()/6;i++)
+        for(size_t j=0;j<6;j++)
+          if(doublevec[i*6+j]!=0) this->wrenchC_.insert(i,j) = doublevec[i*6+j];
+    }
+    if(nh.getParam(ns+"wrenchld",doublevec)){
+      this->wrenchld_.resize(doublevec.size());
+      for(size_t i=0;i<doublevec.size();i++) this->wrenchld_[i] = doublevec[i];
+    }
+    if(nh.getParam(ns+"wrenchud",doublevec)){
+      this->wrenchud_.resize(doublevec.size());
+      for(size_t i=0;i<doublevec.size();i++) this->wrenchud_[i] = doublevec[i];
+    }
+    if(this->wrenchC_.rows() != this->wrenchld_.rows() ||
+       this->wrenchld_.rows() != this->wrenchud_.rows()){
+      std::cerr << "\x1b[31m[PrimitiveCommand::updateFromParam] " << this->name_ << " dimension mismatch" << this->wrenchC_.rows() << " " << this->wrenchld_.rows() << " " << this->wrenchud_.rows() << "\x1b[39m" << std::endl;
+      this->wrenchC_.resize(0,6);
+      this->wrenchld_.resize(0);
+      this->wrenchud_.resize(0);
+    }
+    if(nh.getParam(ns+"pose_follow_gain",doublevec) && doublevec.size()==6){
+      for(size_t i=0;i<6;i++) this->poseFollowGain_[i] = doublevec[i];
+    }
+    if(nh.getParam(ns+"wrench_follow_gain",doublevec) && doublevec.size()==6){
+      for(size_t i=0;i<6;i++) this->wrenchFollowGain_[i] = doublevec[i];
+    }
+    if(nh.getParam(ns+"M",doublevec) && doublevec.size()==6){
+      for(size_t i=0;i<6;i++) this->M_[i] = doublevec[i];
+    }
+    if(nh.getParam(ns+"D",doublevec) && doublevec.size()==6){
+      for(size_t i=0;i<6;i++) this->D_[i] = doublevec[i];
+    }
+    if(nh.getParam(ns+"K",doublevec) && doublevec.size()==6){
+      for(size_t i=0;i<6;i++) this->K_[i] = doublevec[i];
+    }
+  }
+
   void PrimitiveState::updateTargetForOneStep(double dt) {
     this->targetPosePrevPrev_ = this->targetPosePrev_;
     this->targetPosePrev_ = this->targetPose_;

@@ -212,7 +212,10 @@ class EndEffector:
         self.server.applyChanges()
 
     def getState(self):
-        return copy.deepcopy(self.state)
+        ret = copy.deepcopy(self.state)
+        if ret.support_com:
+            ret.wrench_follow_gain = [0.0] * 6
+        return ret
     def getPreviewState(self):
         previewState = copy.deepcopy(self.state)
         previewState.support_com = copy.deepcopy(self.preview_support_com)

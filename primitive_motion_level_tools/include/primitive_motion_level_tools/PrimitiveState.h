@@ -33,6 +33,7 @@ namespace primitive_motion_level_tools {
     const cnoid::Vector6& targetWrenchRaw() const { return targetWrenchRaw_;}
     const cnoid::Vector6& poseFollowGain() const { return poseFollowGain_;}
     const cnoid::Vector6& wrenchFollowGain() const { return wrenchFollowGain_;}
+    cnoid::Vector6& wrenchFollowGain() { return wrenchFollowGain_;}
     const bool& isPoseCGlobal() const { return isPoseCGlobal_; }
     const Eigen::SparseMatrix<double,Eigen::RowMajor>& poseC() const { return poseC_;}
     const cnoid::VectorX& poseld() const { return poseld_;}

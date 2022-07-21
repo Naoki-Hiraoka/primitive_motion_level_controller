@@ -10,7 +10,7 @@
 #include <ik_constraint/COMConstraint.h>
 #include <ik_constraint/JointAngleConstraint.h>
 #include <ik_constraint/COMVelocityConstraint.h>
-#include <ik_constraint/AngularMomentumConstraint.h>
+#include <ik_constraint/AngularMomentumLimitConstraint.h>
 #include <ik_constraint/JointVelocityConstraint.h>
 #include <ik_constraint/ClientCollisionConstraint.h>
 #include <ik_constraint_joint_limit_table/JointLimitMinMaxTableConstraint.h>
@@ -124,7 +124,7 @@ namespace WholeBodyPosition {
       std::unordered_map<cnoid::LinkPtr,std::shared_ptr<IK::JointAngleConstraint> > jointAngleConstraint_;
       std::vector<std::shared_ptr<IK::ClientCollisionConstraint> > collisionConstraint_;
       std::shared_ptr<IK::PositionConstraint> rootLinkConstraint_;
-      std::shared_ptr<IK::AngularMomentumConstraint> angularMomentumConstraint_;
+      std::shared_ptr<IK::AngularMomentumLimitConstraint> angularMomentumLimitConstraint_;
     };
   protected:
     SolveMode_enum solveMode_ = MODE_PRIORITIZED;
@@ -142,7 +142,7 @@ namespace WholeBodyPosition {
     static void getCommandLevelIKConstraints(const cnoid::BodyPtr& robot_ref, std::unordered_map<cnoid::LinkPtr,std::shared_ptr<IK::JointAngleConstraint> >& jointAngleConstraint, std::shared_ptr<IK::PositionConstraint>& rootLinkConstraint, std::vector<std::shared_ptr<IK::IKConstraint> >& commandLevelIKConstraints, const cnoid::BodyPtr& robot_com, double dt, bool followRootLink, double weight = 1.0);
     static void getJointLimitIKConstraints(std::unordered_map<cnoid::LinkPtr,std::shared_ptr<ik_constraint_joint_limit_table::JointLimitMinMaxTableConstraint> >& jointLimitConstraintMap, std::vector<std::shared_ptr<IK::IKConstraint> >& jointLimitIKConstraints, const std::vector<cnoid::LinkPtr>& useJoints, std::unordered_map<cnoid::LinkPtr, std::vector<std::shared_ptr<joint_limit_table::JointLimitTable> > >& jointLimitTablesMap, double dt, double weight = 1.0);
     static void getCOMVelocityIKConstraints(std::shared_ptr<IK::COMVelocityConstraint> cOMVelocityConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double comVelocityLimit, double weight = 1.0);
-    static void getAngularMomentumIKConstraints(std::shared_ptr<IK::AngularMomentumConstraint> angularMomentumConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double angularMomentumLimit, double weight = 1.0);
+    static void getAngularMomentumLimitIKConstraints(std::shared_ptr<IK::AngularMomentumLimitConstraint> angularMomentumLimitConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double angularMomentumLimit, double weight = 1.0);
     static void getCollisionIKConstraints(std::vector<std::shared_ptr<IK::ClientCollisionConstraint> >& collisionConstraints, std::vector<std::shared_ptr<IK::IKConstraint> >& collisionIKConstraints, const cnoid::BodyPtr& robot_com, const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, double dt, double margin=0.01, double velocityDamper=1.0, double weight = 1.0);
     static void getJointVelocityIKConstraints(std::unordered_map<cnoid::LinkPtr,std::shared_ptr<IK::JointVelocityConstraint> >& jointVelocityConstraintMap, std::vector<std::shared_ptr<IK::IKConstraint> >& jointVelocityIKConstraints, const std::vector<cnoid::LinkPtr>& useJoints, double dt, double weight = 1.0);
   };

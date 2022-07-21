@@ -265,20 +265,20 @@ namespace WholeBodyPosition {
     iKConstraints.push_back(cOMVelocityConstraint);
   }
 
-  void PositionController::getAngularMomentumIKConstraints(std::shared_ptr<IK::AngularMomentumConstraint> angularMomentumConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double angularMomentumLimit, double weight){
+  void PositionController::getAngularMomentumLimitIKConstraints(std::shared_ptr<IK::AngularMomentumLimitConstraint> angularMomentumLimitConstraint,  std::vector<std::shared_ptr<IK::IKConstraint> >& iKConstraints, const cnoid::BodyPtr& robot_com, double dt, double angularMomentumLimit, double weight){
     if(angularMomentumLimit<=0.0) return;
 
-    if(!angularMomentumConstraint) angularMomentumConstraint = std::make_shared<IK::AngularMomentumConstraint>();
+    if(!angularMomentumLimitConstraint) angularMomentumLimitConstraint = std::make_shared<IK::AngularMomentumLimitConstraint>();
 
-    angularMomentumConstraint->robot() = robot_com;
-    angularMomentumConstraint->maxAngularMomentum() = cnoid::Vector3::Ones() * angularMomentumLimit;
-    angularMomentumConstraint->minAngularMomentum() = - cnoid::Vector3::Ones() * angularMomentumLimit;
-    angularMomentumConstraint->maxError() << 1.0*dt, 1.0*dt, 1.0*dt;
-    angularMomentumConstraint->precision() << 1e-4, 1e-4, 1e-4;
-    angularMomentumConstraint->weight() = cnoid::Vector3::Ones()*weight;
-    angularMomentumConstraint->dt() = dt;
+    angularMomentumLimitConstraint->robot() = robot_com;
+    angularMomentumLimitConstraint->maxAngularMomentum() = cnoid::Vector3::Ones() * angularMomentumLimit;
+    angularMomentumLimitConstraint->minAngularMomentum() = - cnoid::Vector3::Ones() * angularMomentumLimit;
+    angularMomentumLimitConstraint->maxError() << 1.0*dt, 1.0*dt, 1.0*dt;
+    angularMomentumLimitConstraint->precision() << 1e-4, 1e-4, 1e-4;
+    angularMomentumLimitConstraint->weight() = cnoid::Vector3::Ones()*weight;
+    angularMomentumLimitConstraint->dt() = dt;
 
-    iKConstraints.push_back(angularMomentumConstraint);
+    iKConstraints.push_back(angularMomentumLimitConstraint);
   }
 
   void PositionController::getCollisionIKConstraints(std::vector<std::shared_ptr<IK::ClientCollisionConstraint> >& collisionConstraints, std::vector<std::shared_ptr<IK::IKConstraint> >& collisionIKConstraints, const cnoid::BodyPtr& robot_com, const std::vector<std::shared_ptr<WholeBodyPosition::Collision> >& collisions, double dt, double margin,  double velocityDamper, double weight){
@@ -412,7 +412,7 @@ namespace WholeBodyPosition {
 
     // 重心速度上下限を取得
     PositionController::getCOMVelocityIKConstraints(this->cOMVelocityConstraint_, jointVelocityConstraint, robot_com, dt, comVelocityLimit);
-    PositionController::getAngularMomentumIKConstraints(this->angularMomentumConstraint_, jointVelocityConstraint, robot_com, dt, angularMomentumLimit);
+    PositionController::getAngularMomentumLimitIKConstraints(this->angularMomentumLimitConstraint_, jointVelocityConstraint, robot_com, dt, angularMomentumLimit);
 
     // 関節角度上下限を取得
     std::vector<std::shared_ptr<IK::IKConstraint> > limitConstraint;
